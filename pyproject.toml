@@ -11,6 +11,7 @@ dependencies = [
     "datasets>=5.0.1",
     "fastapi>=0.141.1",
     "flagembedding>=1.4.2",
+    "grandalf>=0.8",
     "langchain>=1.4.2",
     "langchain-community>=0.4.2",
     "langchain-openai>=1.6.4",
