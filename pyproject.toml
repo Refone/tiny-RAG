@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "shop-assistant"
 version = "0.1.0"
@@ -34,3 +38,8 @@ dependencies = [
     "transformers>=5.17.0",
     "uvicorn>=0.53.0",
 ]
+
+# src 布局: 将 src 下的各包以顶层包名(utils、common、processor...)暴露,
+# 通过 `uv sync` 以 editable 方式安装后, 任意入口直接运行脚本也能正确导入
+[tool.hatch.build.targets.wheel]
+packages = ["src/api", "src/common", "src/processor", "src/test", "src/utils"]
