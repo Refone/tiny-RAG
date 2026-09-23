@@ -4,3 +4,4 @@ docker/volumes/
 logs/
 .vscode/
 .idea/
+__pycache__/
