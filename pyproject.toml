@@ -7,4 +7,26 @@ authors = [
     { name = "Refone Leo", email = "710196926@qq.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "datasets>=5.0.1",
+    "fastapi>=0.141.1",
+    "flagembedding>=1.4.2",
+    "langchain>=1.4.2",
+    "langchain-community>=0.4.2",
+    "langchain-openai>=1.6.4",
+    "langgraph>=1.2.12",
+    "mineru>=4.0.6",
+    "minio>=7.2.20",
+    "modelscope>=1.40.1",
+    "numpy>=2.5.3",
+    "openai-agents>=0.20.0",
+    "pandas>=3.0.6",
+    "pymilvus>=3.0.2",
+    "pymongo>=4.18.1",
+    "python-dotenv>=1.2.3",
+    "regex>=2026.9.10",
+    "requests>=2.34.2",
+    "torch>=2.14.0",
+    "transformers>=5.17.0",
+    "uvicorn>=0.53.0",
+]
