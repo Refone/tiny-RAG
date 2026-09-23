@@ -110,8 +110,8 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/mongodb/data:/data/db
-      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/mongodb/config:/data/configdb
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
     restart: always
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
@@ -122,3 +122,7 @@ services:
 networks:
   default:
     name: milvus
+
+volumes:
+  mongodb_data:
+  mongodb_config:
