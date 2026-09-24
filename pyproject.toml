@@ -1,7 +1,7 @@
 [project]
 name = "shop-assistant"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI Shop Assistant"
 readme = "README.md"
 authors = [
     { name = "Refone Leo", email = "710196926@qq.com" }

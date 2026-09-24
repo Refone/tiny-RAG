@@ -4,4 +4,5 @@ docker/volumes/
 logs/
 .vscode/
 .idea/
+.claude/
 __pycache__/

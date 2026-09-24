@@ -43,7 +43,7 @@ _graph_default_state = ImportGraphState(
 
 def create_default_state(**state_dict) -> ImportGraphState:
     state: ImportGraphState = copy.deepcopy(_graph_default_state)
-    state.update(state_dict)
+    state.update(state_dict)    # type: ignore
     return state
 
 def get_default_state() -> ImportGraphState:
