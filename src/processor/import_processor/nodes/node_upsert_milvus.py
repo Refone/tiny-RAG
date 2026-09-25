@@ -1,8 +1,8 @@
 from utils.logging_util import node_log
-from processor.import_processor.state import ImportGraphState, get_default_state
+from processor.import_processor.state import ImportNodeState
 
 @node_log("node_upsert_milvus")
-def node_upsert_milvus(state: ImportGraphState) -> ImportGraphState:
+def node_upsert_milvus(state: ImportNodeState) -> ImportNodeState:
     """
     存入向量库
 
@@ -14,5 +14,6 @@ def node_upsert_milvus(state: ImportGraphState) -> ImportGraphState:
     return state
 
 if __name__ == "__main__":
+    from processor.import_processor.state import get_default_state
     start_state = get_default_state()
     node_upsert_milvus(start_state)

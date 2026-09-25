@@ -1,59 +1,86 @@
-from typing import TypedDict
 import copy
+from typing import TypedDict
 
-class ImportGraphState(TypedDict):
+from common.enum.doc_type import DocType
+
+class ImportNodeState(TypedDict, total=False):
     """
     导入图状态
+
+    注意: 这是整个导入流程的「唯一事实来源」。
+    任何节点需要读写新字段时, 必须先在这里声明,
+    否则 LangGraph 会静默丢弃未声明的 key (不报错) 。
     """
-    task_id: str    # 任务 id
-    is_md: bool     # 是否为 markdown 文件
-    is_pdf: bool    # 是否为 pdf 文件
+    # 任务 ID
+    task_id: str
 
-    # TODO: 整理这些字段
-    local_dir: str  # pdf 转 md 输出的目录
-    local_file: str
-    local_file_path: str
+    # 文件类型
+    doc_type: DocType
+
+    # 原始文件路径, 不确定文件格式
+    origin_file_path: str
+
+    # (转换后的) markdown 文件路径
+    markdown_file_path: str
+
+    # 文件名 (不含后缀)
     file_title: str
-    pdf_path: str
-    md_path: str
 
-    # --- 切块 ---
+    # PDF 转换后的 markdown 全文 (node_pdf_to_md 产出)
     md_content: str
-    chunks: list
-    item_name: str # 主体名
 
-    # --- 数据库相关 ---
-    embeddings_content: list
+    # 文档主体识别结果, 如 "iPhone 13" (node_item_name_recognize 产出)
+    item_name: str
 
-_graph_default_state = ImportGraphState(
-    task_id="",
-    is_md=False,
-    is_pdf=False,
-    local_dir="",
-    local_file="",
-    local_file_path="",
-    file_title="",
-    pdf_path="",
-    md_path="",
-    md_content="",
-    chunks=[],
-    item_name="",
-    embeddings_content=[],
+    # 切分后的 chunk 列表 (node_document_split 产出)
+    # TODO: 确定 chunk 结构 (文本 + metadata + 向量) 后, 收敛为具体的 TypedDict
+    chunks: list[dict]
+
+
+__default_state: ImportNodeState = {
+    "task_id": "",
+    "doc_type": DocType.UNKNOWN,
+    "origin_file_path": "",
+    "markdown_file_path": "",
+    "file_title": "",
+    "md_content": "",
+    "item_name": "",
+    "chunks": [],
+}
+
+# 合法字段集合, 用于在 create_state 时校验入参, 防止拼写错误被 LangGraph 静默丢弃
+_ALLOWED_KEYS = frozenset(ImportNodeState.__optional_keys__) | frozenset(
+    ImportNodeState.__required_keys__
 )
 
-def create_default_state(**state_dict) -> ImportGraphState:
-    state: ImportGraphState = copy.deepcopy(_graph_default_state)
-    state.update(state_dict)    # type: ignore
+
+def create_state(**state_dict) -> ImportNodeState:
+    unknown = set(state_dict) - _ALLOWED_KEYS
+    if unknown:
+        raise KeyError(
+            f"创建状态时传入了未声明的字段: {sorted(unknown)}; "
+            f"合法字段: {sorted(_ALLOWED_KEYS)}"
+        )
+    state = copy.deepcopy(__default_state)
+    state.update(state_dict)
     return state
 
-def get_default_state() -> ImportGraphState:
-    return copy.deepcopy(_graph_default_state)
+
+def get_default_state() -> ImportNodeState:
+    return copy.deepcopy(__default_state)
+
 
 if __name__ == '__main__':
-    datadict = {
-        "task_id":"1234",
-        "is_md":False,
-        "is_pdf":False
-    }
-    test_state: ImportGraphState = create_default_state(**datadict)
-    print(test_state)
+    from rich import print as rprint
+
+    state = create_state(
+        task_id="1234",
+        doc_type=DocType.MARKDOWN,
+        origin_file_path="/path/to/xxx.md",
+    )
+    rprint(state)
+
+    try:
+        create_state(not_a_field=1)
+    except KeyError as e:
+        rprint(f"[red]key 校验生效: {e}[/red]")

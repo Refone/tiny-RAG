@@ -1,8 +1,8 @@
 from utils.logging_util import node_log
-from processor.import_processor.state import ImportGraphState
+from processor.import_processor.state import ImportNodeState
 
 @node_log("node_md_img")
-def node_md_img(state: ImportGraphState) -> ImportGraphState:
+def node_md_img(state: ImportNodeState) -> ImportNodeState:
     """
     图片处理节点 (生成图片的文字描述信息)
 

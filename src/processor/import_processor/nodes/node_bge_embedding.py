@@ -1,8 +1,8 @@
 from utils.logging_util import node_log
-from processor.import_processor.state import ImportGraphState
+from processor.import_processor.state import ImportNodeState
 
 @node_log("node_bge_embedding")
-def node_bge_embedding(state: ImportGraphState) -> ImportGraphState:
+def node_bge_embedding(state: ImportNodeState) -> ImportNodeState:
     """
     嵌入节点, 内容向量化
 

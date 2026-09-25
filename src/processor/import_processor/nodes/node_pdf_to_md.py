@@ -1,8 +1,8 @@
 from utils.logging_util import node_log
-from processor.import_processor.state import ImportGraphState
+from processor.import_processor.state import ImportNodeState
 
 @node_log("node_pdf_to_md")
-def node_pdf_to_md(state: ImportGraphState) -> ImportGraphState:
+def node_pdf_to_md(state: ImportNodeState) -> ImportNodeState:
     """
     PDF 转 Markdown 节点
 
