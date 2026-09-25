@@ -4,7 +4,7 @@ from processor.import_processor.nodes import *
 from langgraph.constants import END
 from langgraph.graph import StateGraph
 from processor.import_processor.state import ImportGraphState, create_default_state
-from common.logging.logger import logger
+from utils.logging_util import logger
 
 workflow = StateGraph(ImportGraphState)
 
@@ -76,7 +76,7 @@ if __name__ == "__main__":
         )}"
     )
 
-    logger.info("图结构:")
-    import_processor.get_graph().print_ascii()
+    # logger.info("图结构:")
+    # import_processor.get_graph().print_ascii()
 
     logger.info("====== 测试结束 ======")

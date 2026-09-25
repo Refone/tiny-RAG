@@ -1,6 +1,5 @@
-from common.logging.logger import node_log
+from utils.logging_util import node_log
 from processor.import_processor.state import ImportGraphState
-
 
 @node_log("node_entry")
 def node_entry(state: ImportGraphState) -> ImportGraphState:
