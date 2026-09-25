@@ -1,5 +1,6 @@
 from functools import wraps
 import inspect
+import os
 from pathlib import Path
 import sys
 import time
@@ -17,6 +18,22 @@ LOG_DIR = Path(config.log.file_dir)
 LOG_FILE_NAME = "app_{time:YYYYMMDD}.log"
 LOG_FILE_PATH = LOG_DIR / LOG_FILE_NAME
 
+def _can_write_log_dir() -> bool:
+    """实际在日志目录写入一个临时文件, 判断是否可写。
+
+    不用 os.access: 它在「权限位」与「真实 open」不一致时 (只读挂载/容器/沙箱)
+    会误判; 且日志目录首次运行时可能不存在。这里用 EAFP, 直接试一次写。
+    """
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        probe = LOG_DIR / f".write_probe_{os.getpid()}"
+        probe.touch()
+        probe.unlink()
+        return True
+    except OSError:
+        return False
+
+
 def init_logger():
     # 1. 删除所有默认 logger, 重新进行配置
     _logger.remove()
@@ -31,18 +48,21 @@ def init_logger():
         )
 
     if config.log.file_enable:
-        LOG_DIR.mkdir(parents=True, exist_ok=True)
-        _logger.add(
-            sink=LOG_FILE_PATH,
-            level=config.log.file_level,
-            format=LOG_FORMAT,
-            rotation="00:00",
-            retention=config.log.file_retention,
-            encoding="utf-8",
-            enqueue=True,
-            backtrace=True,
-            diagnose=True
-        )
+        if _can_write_log_dir():
+            _logger.add(
+                sink=LOG_FILE_PATH,
+                level=config.log.file_level,
+                format=LOG_FORMAT,
+                rotation="00:00",
+                retention=config.log.file_retention,
+                encoding="utf-8",
+                enqueue=True,
+                backtrace=True,
+                diagnose=True,
+                delay=True,          # 第一条日志才建文件
+            )
+        else:
+            _logger.warning(f"日志目录不可写, 已跳过文件日志: {LOG_DIR}")
 
     return _logger
 
