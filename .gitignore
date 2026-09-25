@@ -6,3 +6,4 @@ logs/
 .idea/
 .claude/
 __pycache__/
+*/__pychache__/
