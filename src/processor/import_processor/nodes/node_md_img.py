@@ -1,4 +1,4 @@
-from utils.logging_util import node_log
+from utils.logging_utils import node_log
 from processor.import_processor.state import ImportNodeState
 
 @node_log("node_md_img")

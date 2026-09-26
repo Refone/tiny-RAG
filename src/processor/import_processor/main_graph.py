@@ -6,7 +6,7 @@ from langgraph.graph import StateGraph
 from common.enum.doc_type import DocType
 from processor.import_processor.nodes import *
 from processor.import_processor.state import ImportNodeState, create_state
-from utils.logging_util import logger
+from utils.logging_utils import logger
 
 workflow = StateGraph(ImportNodeState)
 

@@ -4,7 +4,7 @@ from functools import lru_cache
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from utils.path_util import get_project_root
+from utils.path_utils import get_project_root
 
 """
     该文件从 .env 文件中读取配置信息
