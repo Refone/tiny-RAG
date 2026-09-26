@@ -1,7 +1,9 @@
-from utils.logging_utils import node_log
+from processor.import_processor.nodes.registry import register
 from processor.import_processor.state import ImportNodeState
+from utils.logging_utils import node_log
 
-@node_log("node_upsert_milvus")
+@register(cn="写入向量库", description="将向量批量写入 Milvus")
+@node_log()
 def node_upsert_milvus(state: ImportNodeState) -> ImportNodeState:
     """
     存入向量库

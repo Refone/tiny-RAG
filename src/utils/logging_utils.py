@@ -106,12 +106,20 @@ def fix_log_position(record):
 
 logger = base_logger.patch(fix_log_position)
 
-def node_log(node_name: str):
+def node_log(node_name: str | None = None, display_name: str | None = None):
+    """节点日志装饰器。
+
+    Args:
+        node_name:   规范名 (canonical id), 用于追溯; 默认取被装饰函数的 `__name__`。
+        display_name: 展示名, 默认取 node_name; 传入中文名可让日志更可读。
+    """
 
     def _task_id(state) -> str:
         return state.get("task_id", "-")
 
     def deco(func):
+        name = node_name or func.__name__
+
         # 绑定被装饰函数的真实身份, 不再依赖栈定位
         _log = logger.bind(
             _file=func.__code__.co_filename.split("/")[-1].split("\\")[-1],
@@ -119,18 +127,20 @@ def node_log(node_name: str):
             _line=func.__code__.co_firstlineno + 1,
         )
 
+        label = display_name or name
+
         @wraps(func)
         def wrapper(state, *args, **kwargs):    # 明确装饰函数要有一个 state 参数
             task_id = _task_id(state)
             start_ts = time.time()
-            _log.info(f"<task_id = {task_id}> [{node_name}] 节点开始")
+            _log.info(f"<task_id = {task_id}> [{label}] 节点开始")
             try:
                 result = func(state, *args, **kwargs)
                 cost_ms = int((time.time() - start_ts) * 1000)
-                _log.info(f"<task_id = {task_id}> [{node_name}] 节点完成, 耗时={cost_ms}ms")
+                _log.info(f"<task_id = {task_id}> [{label}] 节点完成, 耗时={cost_ms}ms")
                 return result
             except Exception:
-                _log.opt(exception=True).error(f"<task_id = {task_id}> [{node_name}] 节点异常")
+                _log.opt(exception=True).error(f"<task_id = {task_id}> [{label}] 节点异常")
                 raise
         return wrapper
     return deco

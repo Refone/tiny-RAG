@@ -1,7 +1,9 @@
-from utils.logging_utils import node_log
+from processor.import_processor.nodes.registry import register
 from processor.import_processor.state import ImportNodeState
+from utils.logging_utils import node_log
 
-@node_log("node_item_name_recognize")
+@register(cn="主体识别", description="调用 LLM 识别整篇文档的主体名称")
+@node_log()
 def node_item_name_recognize(state: ImportNodeState) -> ImportNodeState:
     """
     主体识别节点

@@ -1,7 +1,9 @@
-from utils.logging_utils import node_log
+from processor.import_processor.nodes.registry import register
 from processor.import_processor.state import ImportNodeState
+from utils.logging_utils import node_log
 
-@node_log("node_md_img")
+@register(cn="图片处理", description="上传图片到 MinIO 并生成图片描述")
+@node_log()
 def node_md_img(state: ImportNodeState) -> ImportNodeState:
     """
     图片处理节点 (生成图片的文字描述信息)
