@@ -2,6 +2,9 @@ import os
 from pathlib import Path
 from functools import lru_cache
 
+def from_project_root(path: str | Path) -> Path:
+    return get_project_root() / path
+
 def get_path_dir(ps:int = 0)->Path:
     """
     pathlib.Path 提供了 parents 属性, 这是一个有序的路径上级目录迭代器, 直接通过索引取值就能快速获取「上 N 级目录」, 完美解决多层 .parent 繁琐的问题, 这也是官方推荐的简化写法！

@@ -39,8 +39,18 @@ class LogSettings(BaseSettings):
     file_retention: str = "7 days"
     file_dir: str = str(get_project_root() / "logs")
 
+class MineruSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        **BASE_CONFIG,
+        env_prefix="MINERU_"
+    )
+
+    base_url: str = "https://mineru.net/api/v4"
+    api_key: str = ""
+
 class Settings(BaseSettings):
     log: LogSettings = Field(default_factory=LogSettings)
+    mineru: MineruSettings = Field(default_factory=MineruSettings)
 
 @lru_cache
 def get_global_settings() -> Settings:

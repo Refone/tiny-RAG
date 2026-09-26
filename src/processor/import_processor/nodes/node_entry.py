@@ -12,7 +12,7 @@
 
     - 更新状态数据:
         - doc_type
-        - file_title
+
 """
 from pathlib import Path
 
@@ -44,8 +44,8 @@ def node_entry(state: ImportNodeState) -> ImportNodeState:
         add_done_node(state["task_id"], node_entry.__name__)
         return state
 
-    # 3. 提取文件标题
-    state["file_title"] = origin_file_path.stem
+    if state["doc_type"] == DocType.MARKDOWN:
+        state['markdown_file_path'] = origin_file_path
 
     add_done_node(state["task_id"], node_entry.__name__)
     return state
