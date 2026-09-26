@@ -17,23 +17,18 @@
 from pathlib import Path
 
 from common.enum.doc_type import DocType
-from processor.import_processor.nodes.registry import register
+from utils.node_utils import trace_node
 from processor.import_processor.state import ImportNodeState
-from utils.logging_utils import logger, node_log
+from utils.logging_utils import logger
 from utils.path_utils import get_project_root
-from utils.task_utils import add_running_node, add_done_node
 
-@register(cn="检查文件", description="识别文件类型、补全状态并路由")
-@node_log()
+@trace_node(desc="入口节点")
 def node_entry(state: ImportNodeState) -> ImportNodeState:
-    add_running_node(state["task_id"], node_entry.__name__)
-
     # 1. 判断文件存在
     origin_file_path = Path(state["origin_file_path"])
 
     if not origin_file_path.exists():
         logger.warning(f"文件不存在: {origin_file_path}, 终止导入流程")
-        add_done_node(state["task_id"], node_entry.__name__)
         return state
 
     # 2. 提取文件类型
@@ -41,13 +36,11 @@ def node_entry(state: ImportNodeState) -> ImportNodeState:
 
     if state["doc_type"] == DocType.UNKNOWN:
         logger.warning(f"未知文件类型: {origin_file_path}, 终止导入流程")
-        add_done_node(state["task_id"], node_entry.__name__)
         return state
 
     if state["doc_type"] == DocType.MARKDOWN:
         state['markdown_file_path'] = origin_file_path
 
-    add_done_node(state["task_id"], node_entry.__name__)
     return state
 
 

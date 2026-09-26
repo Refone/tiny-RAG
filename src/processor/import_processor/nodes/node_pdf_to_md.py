@@ -5,13 +5,12 @@ import time
 import requests
 
 from common.config.settings import config
-from processor.import_processor.nodes.registry import register
 from processor.import_processor.state import ImportNodeState
-from utils.logging_utils import node_log, logger, step_log
+from utils.logging_utils import logger
+from utils.node_utils import step_log, trace_node
 from utils.path_utils import from_project_root
-from utils.task_utils import add_done_node, add_running_node
 
-@step_log("step_1_validate_and_setup")
+@step_log("校验 PDF 文件")
 def step_1_validate_and_setup(state: ImportNodeState) -> Path:
     pdf_path = state.get("origin_file_path")
 
@@ -31,7 +30,7 @@ def step_1_validate_and_setup(state: ImportNodeState) -> Path:
     logger.debug(f"PDF 校验通过: {str(pdf_path_obj)}")
     return pdf_path_obj
 
-@step_log("step_2_upload_and_poll")
+@step_log("上传PDF,轮询等待转换完成")
 def step_2_upload_and_poll(pdf_path_obj: Path) -> str:
     if not config.mineru.base_url or not config.mineru.api_key:
         raise ValueError("MinerU 配置错误, 请检查 .env 是否正确配置 MINERU_ 相关参数")
@@ -126,7 +125,7 @@ def step_2_upload_and_poll(pdf_path_obj: Path) -> str:
             logger.debug(f"尚在解析, 3s 后重试")
             continue
 
-@step_log("step_3_download_and_unzip")
+@step_log("下载并解压")
 def step_3_download_and_unzip(zip_url: str, state: ImportNodeState) -> Path:
     """
     下载并解压 zip 文件
@@ -159,8 +158,7 @@ def step_3_download_and_unzip(zip_url: str, state: ImportNodeState) -> Path:
 
 
 
-@register(cn="PDF 转 Markdown", description="调用 MinerU 将 PDF 转为 Markdown")
-@node_log()
+@trace_node(desc="PDF 转 Markdown")
 def node_pdf_to_md(state: ImportNodeState) -> ImportNodeState:
     """
     PDF 转 Markdown 节点
@@ -173,8 +171,6 @@ def node_pdf_to_md(state: ImportNodeState) -> ImportNodeState:
             获得 zip 的下载 url
     step 3: 下载 zip, 解压, 重命名, 更新 state 状态
     """
-    add_running_node(state["task_id"], node_pdf_to_md.__name__)
-
     # 1. 校验路径完整以及文件是否真实存在
     pdf_path_obj = step_1_validate_and_setup(state)
 
@@ -184,7 +180,6 @@ def node_pdf_to_md(state: ImportNodeState) -> ImportNodeState:
 
     state["markdown_file_path"] = str(md_path)
 
-    add_done_node(state["task_id"], node_pdf_to_md.__name__)
     return state
 
 if __name__ == "__main__":

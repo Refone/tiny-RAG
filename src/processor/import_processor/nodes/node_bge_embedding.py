@@ -1,9 +1,7 @@
-from processor.import_processor.nodes.registry import register
+from utils.node_utils import trace_node
 from processor.import_processor.state import ImportNodeState
-from utils.logging_utils import node_log
 
-@register(cn="向量化", description="对 chunks 做 BGE 稠密/稀疏向量化")
-@node_log()
+@trace_node(desc="向量化")
 def node_bge_embedding(state: ImportNodeState) -> ImportNodeState:
     """
     嵌入节点, 内容向量化

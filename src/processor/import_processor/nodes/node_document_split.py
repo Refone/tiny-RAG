@@ -1,9 +1,7 @@
-from processor.import_processor.nodes.registry import register
+from utils.node_utils import trace_node
 from processor.import_processor.state import ImportNodeState
-from utils.logging_utils import node_log
 
-@register(cn="文档切分", description="按 Markdown 标题层级递归切分为 chunks")
-@node_log()
+@trace_node(desc="文档切分")
 def node_document_split(state: ImportNodeState) -> ImportNodeState:
     """
     文档切分节点
