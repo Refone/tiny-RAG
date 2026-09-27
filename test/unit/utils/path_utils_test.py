@@ -53,11 +53,12 @@ def test_get_project_root_prefers_env_var(monkeypatch, tmp_path):
     assert get_project_root() == tmp_path.resolve()
 
 
-def test_get_project_root_falls_back_when_env_var_is_not_a_dir(monkeypatch, tmp_path):
+def test_get_project_root_falls_back_when_env_var_is_not_a_dir(monkeypatch, tmp_path, project_root):
     monkeypatch.setenv("PROJECT_ROOT", str(tmp_path / "not-exist"))
 
-    # 环境变量指向的不是目录 -> 回退到向上查找
-    assert get_project_root().name == "shop-assistant"
+    # 环境变量指向的不是目录 -> 回退到向上查找, 应命中真正的项目根
+    # (不能依赖检出目录名, GitHub 上仓库目录名是 shop-assistant-agent)
+    assert get_project_root() == project_root.resolve()
 
 
 def test_get_project_root_raises_without_markers(monkeypatch):
