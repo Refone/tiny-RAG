@@ -38,4 +38,42 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "pytest-mirror>=0.1.1",
 ]
+
+[tool.pytest.ini_options]
+# pytest 最低版本声明
+minversion = "9.0"
+# 只收集 test/ 下的用例
+testpaths = ["test"]
+# src 是源码根, 让 `import utils.xxx` / `import processor.xxx` 直接可用 (无需安装包)
+pythonpath = ["src"]
+# 测试文件命名约定: 与 src 模块同名 + _test.py 后缀, 便于镜像对照
+python_files = ["*_test.py"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    # 不把测试目录塞进 sys.path, 避免同名模块互相覆盖
+    "--import-mode=importlib",
+    # 指定要测量覆盖率的源代码路径
+    "--cov=src",
+    # 在 reports/coverage_html 下生成覆盖率报告
+    "--cov-report=html:reports/coverage_html",
+    # 在 reports/coverage_xml 下生成 xml 覆盖率报告
+    "--cov-report=xml:reports/coverage_xml",
+]
+markers = [
+    "integration: 依赖外部服务 (Milvus / MinerU / MinIO / LLM 等) 的集成测试, 默认跳过, 用 --run-integration 开启",
+    "slow: 耗时较长的测试",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "if __name__ == .__main__.:",
+]
+
+[tool.coverage.run]
+# 跑覆盖率测试会自动生成一个 .coverage 文件, 这里指定其路径
+data_file = "reports/.coverage"
