@@ -2,6 +2,7 @@ import inspect
 import os
 from pathlib import Path
 import sys
+import uuid
 
 from loguru import logger as _logger
 from common.config.settings import config
@@ -24,7 +25,9 @@ def _can_write_log_dir() -> bool:
     """
     try:
         LOG_DIR.mkdir(parents=True, exist_ok=True)
-        probe = LOG_DIR / f".write_probe_{os.getpid()}"
+        # 探针名带 uuid: 只用 pid 的话, 同进程多线程并发探测时会互相删掉对方的探针
+        # (touch -> unlink 竞态), 把「可写」误判成「不可写」, 静默关掉文件日志。
+        probe = LOG_DIR / f".write_probe_{os.getpid()}_{uuid.uuid4().hex}"
         probe.touch()
         probe.unlink()
         return True
@@ -60,7 +63,10 @@ def init_logger():
                 delay=True,          # 第一条日志才建文件
             )
         else:
-            _logger.warning(f"日志目录不可写, 已跳过文件日志: {LOG_DIR}")
+            # 注意: 上面已经 _logger.remove() 清空全部 sink, 若 console_enable=False
+            # 则此刻一个 sink 都没有, _logger.warning 会被直接丢弃 (降级完全静默)。
+            # 因此这里直接写 stderr 兜底, 保证运维一定看得到。
+            print(f"日志目录不可写, 已跳过文件日志: {LOG_DIR}", file=sys.stderr)
 
     return _logger
 
@@ -83,13 +89,17 @@ def fix_log_position(record):
         return
 
     def _this_is_logging_frame(frame):
-        if ('logging_utils.py' in frame.filename):
+        """判断 frame 是否属于日志基础设施自身 (本模块 / loguru 内部)。
+
+        只按文件路径判断。早先用 `'_log' in frame.function` 过滤, 会把函数名里含
+        "_log" 的正常业务函数 (如 sync_log_files) 一并跳过, 日志归属错位到它的
+        上一层调用方, file/line 也跟着错 —— 见 test/unit/utils/logging_utils_test.py
+        的 test_position_keeps_user_frames_named_like_logging。
+        """
+        filename = frame.filename.replace("\\", "/")
+        if filename.rsplit("/", 1)[-1] == "logging_utils.py":
             return True
-        if ('_logger.py' in frame.filename):
-            return True
-        if ('_log' in frame.function):
-            return True
-        return False
+        return "/loguru/" in filename
 
     for frame in inspect.stack():
         if _this_is_logging_frame(frame):

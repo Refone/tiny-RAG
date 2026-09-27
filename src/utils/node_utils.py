@@ -76,17 +76,20 @@ def step_log(desc: str | None = None):
 
 
 def _task_trace(node_name: str) -> Callable[..., Any]:
-    """任务追踪包装: 开始时记 running, 结束(含异常)时记 done。"""
+    """任务追踪包装: 开始时记 running, 结束(含异常)时记 done。
+
+    两次记录都带 `need_push=True`: 节点状态变化要立刻推给 SSE 模块, 否则前端只能靠轮询。
+    """
 
     def deco(func):
         @wraps(func)
         def wrapper(state, *args, **kwargs):
             task_id = state.get("task_id", "-")
-            add_running_node(task_id, node_name)
+            add_running_node(task_id, node_name, need_push=True)
             try:
                 return func(state, *args, **kwargs)
             finally:
-                add_done_node(task_id, node_name)
+                add_done_node(task_id, node_name, need_push=True)
 
         return wrapper
 

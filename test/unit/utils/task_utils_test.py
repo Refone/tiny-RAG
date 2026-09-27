@@ -35,23 +35,13 @@ from utils.task_utils import (
 # 本模块统一使用的任务 ID, 避免与其它模块/并行用例互相干扰
 TASK_ID = "task-utils-unit-test"
 
-# 全局字典名, 供隔离 fixture 与「无副作用」断言复用
+# 全局字典名, 用于「读操作无副作用」断言 (用例隔离由 test/unit/conftest.py 统一负责)
 _STORE_NAMES = (
     "_tasks_running_nodes",
     "_tasks_done_nodes",
     "_tasks_status",
     "_tasks_result",
 )
-
-
-@pytest.fixture(autouse=True)
-def _isolated_task_store():
-    """每个用例前后清空全局任务字典, 防止用例之间互相污染。"""
-    for name in _STORE_NAMES:
-        getattr(task_utils, name).clear()
-    yield
-    for name in _STORE_NAMES:
-        getattr(task_utils, name).clear()
 
 
 # --------------------------------------------------------------------------- #
@@ -79,6 +69,25 @@ def test_add_done_node_dedup():
     add_done_node(TASK_ID, "node_a")  # 重复, 应被去重
     add_done_node(TASK_ID, "node_b")
     assert get_task_done_nodes(TASK_ID) == ["node_a", "node_b"]
+
+
+def test_add_done_node_removes_from_running():
+    """回归 U4: 完成后必须从「运行中」出队, 否则 running 与 done 完全重叠。"""
+    add_running_node(TASK_ID, "node_a")
+    add_running_node(TASK_ID, "node_b")
+
+    add_done_node(TASK_ID, "node_a")
+
+    assert get_task_running_nodes(TASK_ID) == ["node_b"]
+    assert get_task_done_nodes(TASK_ID) == ["node_a"]
+
+
+def test_add_done_node_for_untracked_task_creates_no_running_entry():
+    """给从未运行过的任务记 done, 不应凭空建出「运行中」条目。"""
+    add_done_node(TASK_ID, "node_a")
+
+    assert get_task_done_nodes(TASK_ID) == ["node_a"]
+    assert TASK_ID not in task_utils._tasks_running_nodes
 
 
 # --------------------------------------------------------------------------- #
@@ -123,6 +132,24 @@ def test_get_missing_task_no_side_effect():
 
 
 # --------------------------------------------------------------------------- #
+# getter 返回副本, 避免调用方污染内部状态 (回归 U5)
+# --------------------------------------------------------------------------- #
+def test_getters_return_copies():
+    add_running_node(TASK_ID, "node_a")
+    add_done_node(TASK_ID, "node_b")
+
+    running = get_task_running_nodes(TASK_ID)
+    done = get_task_done_nodes(TASK_ID)
+    running.append("外部改动")
+    done.append("外部改动")
+
+    # 返回值是副本, 改动它不影响内部状态
+    assert get_task_running_nodes(TASK_ID) == ["node_a"]
+    assert get_task_done_nodes(TASK_ID) == ["node_b"]
+    assert task_utils._tasks_running_nodes[TASK_ID] == ["node_a"]
+
+
+# --------------------------------------------------------------------------- #
 # need_push 触发 SSE 推送
 # --------------------------------------------------------------------------- #
 def test_need_push_triggers_sse(monkeypatch):
@@ -160,3 +187,11 @@ def test_clear_task_idempotent():
 def test_defaultdict_first_append():
     task_utils._tasks_running_nodes["t2"].append("node_x")
     assert get_task_running_nodes("t2") == ["node_x"]
+
+
+# --------------------------------------------------------------------------- #
+# task_push_sse: 目前是空实现
+# --------------------------------------------------------------------------- #
+def test_task_push_sse_is_noop_for_now():
+    """SSE 尚未对接, 当前空实现不应抛异常也不写状态 (对接后改成断言推送内容)。"""
+    assert task_utils.task_push_sse(TASK_ID) is None
