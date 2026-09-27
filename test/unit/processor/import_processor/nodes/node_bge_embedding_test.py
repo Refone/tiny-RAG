@@ -10,5 +10,5 @@ TODO: 实现后补充用例
     - 模型加载失败时的异常处理
     - 空 chunks 不触发模型调用
 
-说明: 真实加载 BGE-M3 的用例放 test/integration 并标记 @pytest.mark.slow。
+说明: 真实加载 BGE-M3 的用例放 test/integration 并标记 @pytest.mark.integration。
 """

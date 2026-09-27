@@ -45,6 +45,7 @@ def init_logger():
             level=config.log.console_level,
             format=LOG_FORMAT,
             colorize=True,
+            backtrace=False,
             enqueue=True,   # 异步写日志, 可能被同步 print “后来居上”
         )
 

@@ -6,13 +6,14 @@ RAG Agent，LangGraph 编排。导入链路已实现，查询链路待实现。
 
 ## 核心约束
 
-- 代码修改需要通过单元测试和集成测试。
+- 代码修改需要通过单元测试和冒烟测试。
 - 如果发现单元测试有缺陷，或阻碍项目演进，可上报。
 
 ## 常用命令
 
-- 运行单元测试：`pytest test/unit`
-- 运行集成测试：`pytest test/integration --run-integration`（需 Milvus/MinerU/LLM）
+- 运行单元测试：`uv run pytest`（默认只跑 unit，smoke / integration 自动跳过）
+- 运行冒烟测试：`uv run pytest test/smoke -s -v --run-smoke`（真实 apikey / 网络）
+- 运行集成测试：`uv run pytest --run-integration`（需 Milvus/MinerU/LLM）
 - 安装依赖：`uv sync`
 
 ## 导入链路（7 节点）
@@ -33,6 +34,7 @@ RAG Agent，LangGraph 编排。导入链路已实现，查询链路待实现。
 - `src/processor/query_processor/` — 查询链路（空）
 - `src/utils/node_utils.py` — 节点装饰器
 - `test/unit/` — 单元测试，与 src 镜像
+- `test/smoke/` — 冒烟测试，真实外部服务（`--run-smoke` 开启）
 
 ## 架构图
 

@@ -64,8 +64,9 @@ addopts = [
     "--cov-report=xml:reports/coverage_xml",
 ]
 markers = [
-    "integration: 依赖外部服务 (Milvus / MinerU / MinIO / LLM 等) 的集成测试, 默认跳过, 用 --run-integration 开启",
-    "slow: 耗时较长的测试",
+    "unit: 单元测试 (mock 所有外部依赖, 默认运行)",
+    "smoke: 冒烟测试 (真实 apikey / 网络请求), 默认跳过, 用 --run-smoke 开启",
+    "integration: 模块耦合集成测试 (依赖 Milvus / MinIO / LLM 等), 默认跳过, 用 --run-integration 开启",
 ]
 
 [tool.coverage.report]

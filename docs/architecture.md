@@ -117,15 +117,18 @@ shop-assistant/
 │   │   └── task_utils.py    # 4 个进程内任务状态字典 (running/done/status/result) + SSE 占位
 │   └── web/                # 最终 Web 呈现 (仅 .gitkeep, 待实现)
 ├── test/                   # pytest 测试目录
-│   ├── conftest.py         # 全局 fixture (project_root / sample_md / sample_pdf ...) + --run-integration
-│   ├── unit/               # 单元测试, 与 src 目录一一镜像
+│   ├── conftest.py         # 全局 fixture (project_root / sample_md / sample_pdf ...) + 三档 marker 的 --run-unit/--run-smoke/--run-integration 开关
+│   ├── unit/               # 单元测试, 与 src 目录一一镜像 (默认运行)
 │   │   ├── conftest.py     # autouse 的 clean_task_store, 隔离 task_utils 全局字典
 │   │   ├── api/ web/       # 占位 (仅 .gitkeep)
 │   │   ├── common/         # config/settings_test.py, enum/doc_type_test.py, prompt/ (占位)
 │   │   ├── processor/      # import_processor/ (main_graph_test.py, state_test.py, nodes/ 7 个)
 │   │   │                   # query_processor/ (占位)
 │   │   └── utils/          # logging / node / path / task_utils_test.py
-│   ├── integration/        # 集成测试 (依赖 Milvus / MinerU / LLM, 默认跳过; 目前仅 .gitkeep)
+│   ├── smoke/              # 冒烟测试, 真实 apikey / 网络请求 (默认跳过, --run-smoke 开启)
+│   │   ├── conftest.py     # clean_task_store + pytest_runtest_call 用例横幅分隔
+│   │   └── import_flow_test.py  # 导入链路冒烟 (md 直通 / pdf 走 MinerU)
+│   ├── integration/        # 集成测试, 模块耦合 (默认跳过, --run-integration 开启; 目前仅 .gitkeep)
 │   ├── experimental/       # 试验性脚本, 仅供参考
 │   │   └── colorful_print_test.py  # ANSI 彩色打印实验
 │   └── test-data/          # 测试样例文件

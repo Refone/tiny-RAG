@@ -8,7 +8,7 @@
 
 说明:
     - 所有外部调用 (requests / time.sleep / from_project_root) 一律 mock, 不打真实网络。
-    - 需要真实 MinerU API Key 的用例请放 test/integration, 并加 @pytest.mark.integration。
+    - 需要真实 MinerU API Key 的用例请放 test/smoke, 并加 @pytest.mark.smoke。
 """
 
 from __future__ import annotations
