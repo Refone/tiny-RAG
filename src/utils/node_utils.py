@@ -75,21 +75,22 @@ def step_log(desc: str | None = None):
     return deco
 
 
-def _task_trace(node_name: str) -> Callable[..., Any]:
+def _task_trace(node_name: str, *, need_push: bool = False) -> Callable[..., Any]:
     """任务追踪包装: 开始时记 running, 结束(含异常)时记 done。
 
-    两次记录都带 `need_push=True`: 节点状态变化要立刻推给 SSE 模块, 否则前端只能靠轮询。
+    need_push 原样透传给 task_utils 的 add_running_node / add_done_node:
+    是否在状态变化后立刻触发 SSE 推送。这里不做任何写死, 由装饰器使用方决定。
     """
 
     def deco(func):
         @wraps(func)
         def wrapper(state, *args, **kwargs):
             task_id = state.get("task_id", "-")
-            add_running_node(task_id, node_name, need_push=True)
+            add_running_node(task_id, node_name, need_push=need_push)
             try:
                 return func(state, *args, **kwargs)
             finally:
-                add_done_node(task_id, node_name, need_push=True)
+                add_done_node(task_id, node_name, need_push=need_push)
 
         return wrapper
 
@@ -101,6 +102,7 @@ def trace_node(
     *,
     log_trace: bool = True,
     task_trace: bool = True,
+    need_push: bool = False,
 ) -> Callable[..., Any]:
     """节点统一装饰器。
 
@@ -111,6 +113,10 @@ def trace_node(
         task_trace 是否记录任务追踪; 为 True 时在节点开始时自动调用
                    `add_running_node`, 结束或异常退出时自动调用 `add_done_node`,
                    默认 True。
+        need_push  任务状态变化后是否立刻触发 SSE 推送 (透传给
+                   `add_running_node` / `add_done_node`), 默认 False。
+                   仅在 `task_trace=True` 时有效; 需要实时进度的节点自行开启,
+                   其余节点保持默认, 避免无谓推送。
 
     任务追踪以函数名 `func.__name__` 作为节点标识, 与 LangGraph 节点名一致。
     """
@@ -122,7 +128,7 @@ def trace_node(
         if log_trace:
             func = node_log(desc=description)(func)
         if task_trace:
-            func = _task_trace(func.__name__)(func)
+            func = _task_trace(func.__name__, need_push=need_push)(func)
 
         return func
 

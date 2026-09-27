@@ -228,8 +228,8 @@ def test_trace_node_records_running_then_done():
     assert get_task_running_nodes(TASK_ID) == []
 
 
-def test_trace_node_pushes_sse_on_transitions(monkeypatch):
-    """回归 U3: 节点状态变化要触发 SSE 推送 (此前 need_push 从未传 True)。"""
+def test_trace_node_does_not_push_by_default(monkeypatch):
+    """need_push 默认 False: 不显式开启就不推送, 把开关的决定权留给装饰器使用方。"""
     pushed: list[str] = []
     monkeypatch.setattr(task_utils, "task_push_sse", pushed.append)
 
@@ -239,7 +239,36 @@ def test_trace_node_pushes_sse_on_transitions(monkeypatch):
 
     probe_node({"task_id": TASK_ID})
 
-    assert pushed == [TASK_ID, TASK_ID]  # 开始记 running 一次 + 结束记 done 一次
+    assert pushed == []
+    assert get_task_done_nodes(TASK_ID) == ["probe_node"]  # 任务追踪本身照旧
+
+
+def test_trace_node_pushes_when_need_push_enabled(monkeypatch):
+    """显式 need_push=True 时, running / done 两次状态变化各推送一次。"""
+    pushed: list[str] = []
+    monkeypatch.setattr(task_utils, "task_push_sse", pushed.append)
+
+    @node_utils.trace_node(desc="探针节点", need_push=True)
+    def probe_node(state):
+        return state
+
+    probe_node({"task_id": TASK_ID})
+
+    assert pushed == [TASK_ID, TASK_ID]
+
+
+def test_trace_node_need_push_is_inert_without_task_trace(monkeypatch):
+    """task_trace=False 时不做任务追踪, need_push 自然也不会产生推送。"""
+    pushed: list[str] = []
+    monkeypatch.setattr(task_utils, "task_push_sse", pushed.append)
+
+    @node_utils.trace_node(desc="只记日志", task_trace=False, need_push=True)
+    def only_log(state):
+        return state
+
+    only_log({"task_id": TASK_ID})
+
+    assert pushed == []
 
 
 def test_trace_node_records_done_on_exception():
