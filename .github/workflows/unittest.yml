@@ -1,0 +1,46 @@
+name: Unittest Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  unittest:
+    name: Run all unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          # 缓存依赖, 加速后续构建 (torch / transformers 等体积较大)
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install dependencies
+        # --frozen 严格按 uv.lock 安装, 保证 CI 与本地一致
+        # dev 依赖组 (pytest / pytest-cov) 默认会随 uv sync 一起安装
+        run: uv sync --frozen
+
+      - name: Run unit tests
+        # conftest.py 默认只跑 test/unit 单测; smoke / integration 会自动跳过
+        # addopts 已配置 --cov=src 并生成 reports/coverage_html、reports/coverage_xml
+        run: uv run pytest
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: reports/coverage_html/
+          if-no-files-found: ignore
