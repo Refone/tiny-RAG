@@ -3839,18 +3839,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pytest-mirror"
-version = "0.1.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pluggy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/7c/3e45f5ab5ce857b766d8e878e80e1f97cd947b1970f12dc0b4e2a40f1ef4/pytest_mirror-0.1.1.tar.gz", hash = "sha256:252e39571070fc1ed74457b060c9c98cc301e73c47898a89ae9c7c046922e6fa", size = 19786, upload-time = "2025-07-30T22:55:13.906Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/33/2d/17fdbb020a702fc277424a3ed4c4db14f006c188cc8e828107b1cf27784f/pytest_mirror-0.1.1-py3-none-any.whl", hash = "sha256:6d343b2ef316114c8c059c2e77cc7d87e3e5f3ca1e54847acd74c6e00551ebe6", size = 11432, upload-time = "2025-07-30T22:55:12.847Z" },
-]
-
-[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 source = { registry = "https://pypi.org/simple" }
@@ -4653,7 +4641,6 @@ dependencies = [
 dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
-    { name = "pytest-mirror" },
 ]
 
 [package.metadata]
@@ -4689,7 +4676,6 @@ requires-dist = [
 dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
-    { name = "pytest-mirror", specifier = ">=0.1.1" },
 ]
 
 [[package]]
