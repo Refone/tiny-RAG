@@ -87,6 +87,10 @@ def step_2_upload_and_poll(pdf_path: Path) -> str:
 
     # PUT 上传只返回状态码, 无 body
     with requests.Session() as session:
+
+        # 纯净版的请求头,不随意携带代理的参数
+        session.trust_env = False
+
         upload_resp = session.put(upload_url, data=pdf_path.read_bytes())
         if upload_resp.status_code != 200:
             raise requests.RequestException(f"上传文件失败: {upload_resp.text}")
@@ -138,15 +142,15 @@ def step_3_download_and_unzip(zip_url: str, state: ImportNodeState) -> Path:
     md_dir = from_project_root(_MD_UNZIP_FOLDER)
     md_dir.mkdir(parents=True, exist_ok=True)
 
-    response = requests.get(zip_url)
-    if response.status_code != 200:
-        raise requests.RequestException(f"下载 zip 文件失败: {response.text}")
+    download_response = requests.get(zip_url)
+    if download_response.status_code != 200:
+        raise requests.RequestException(f"下载 zip 文件失败: {download_response.text}")
 
     file_title = state["file_title"]
     zip_path = md_dir / f"{file_title}.zip"
     extract_dir = md_dir / file_title
 
-    zip_path.write_bytes(response.content)
+    zip_path.write_bytes(download_response.content)
     if extract_dir.is_dir():
         shutil.rmtree(extract_dir)
     extract_dir.mkdir(parents=True, exist_ok=True)

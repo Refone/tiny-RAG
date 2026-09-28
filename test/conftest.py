@@ -102,8 +102,8 @@ def sample_md(test_data_dir: Path) -> Path:
 
 @pytest.fixture(scope="session")
 def sample_pdf(test_data_dir: Path) -> Path:
-    """PDF 样例: entropy.pdf"""
-    return test_data_dir / "entropy.pdf"
+    """PDF 样例: hak180产品安全手册.pdf"""
+    return test_data_dir / "hak180产品安全手册.pdf"
 
 
 @pytest.fixture(scope="session")
