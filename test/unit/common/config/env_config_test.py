@@ -1,9 +1,9 @@
-"""单元测试: src/common/config/settings.py
+"""单元测试: src/common/config/env_config.py
 
 被测对象:
     LogSettings / MineruSettings   配置模型 (env_prefix: LOG_ / MINERU_)
     Settings                       聚合配置
-    get_global_settings            带 lru_cache 的全局配置入口
+    get_global_settings            带 lru_cache 的全局配置入口 (导出为 ENV_CONFIG)
 
 TODO: 补充用例
     - 默认值: log.console_enable=False, mineru.base_url="https://mineru.net/api/v4"

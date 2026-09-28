@@ -5,7 +5,7 @@ import sys
 import uuid
 
 from loguru import logger as _logger
-from common.config.settings import config
+from common.config.env_config import ENV_CONFIG
 
 LOG_FORMAT = (
     "<yellow>{time:YYYY-MM-DD HH:mm:ss.SSS}</yellow> | "
@@ -13,7 +13,7 @@ LOG_FORMAT = (
     "<cyan>{file}</cyan>:<cyan>{line}</cyan> <cyan>{function}</cyan> | "
     "<level>{message}</level>"
 )
-LOG_DIR = Path(config.log.file_dir)
+LOG_DIR = Path(ENV_CONFIG.log.file_dir)
 LOG_FILE_NAME = "app_{time:YYYYMMDD}.log"
 LOG_FILE_PATH = LOG_DIR / LOG_FILE_NAME
 
@@ -39,24 +39,24 @@ def init_logger():
     # 1. 删除所有默认 logger, 重新进行配置
     _logger.remove()
 
-    if config.log.console_enable:
+    if ENV_CONFIG.log.console_enable:
         _logger.add(
             sink=sys.stdout,
-            level=config.log.console_level,
+            level=ENV_CONFIG.log.console_level,
             format=LOG_FORMAT,
             colorize=True,
             backtrace=False,
             enqueue=True,   # 异步写日志, 可能被同步 print “后来居上”
         )
 
-    if config.log.file_enable:
+    if ENV_CONFIG.log.file_enable:
         if _can_write_log_dir():
             _logger.add(
                 sink=LOG_FILE_PATH,
-                level=config.log.file_level,
+                level=ENV_CONFIG.log.file_level,
                 format=LOG_FORMAT,
                 rotation="00:00",
-                retention=config.log.file_retention,
+                retention=ENV_CONFIG.log.file_retention,
                 encoding="utf-8",
                 enqueue=True,
                 backtrace=True,

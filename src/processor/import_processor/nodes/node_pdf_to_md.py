@@ -17,7 +17,7 @@ from pathlib import Path
 
 import requests
 
-from common.config.settings import config
+from common.config.env_config import ENV_CONFIG
 from processor.import_processor.state import ImportNodeState
 from utils.logging_utils import logger
 from utils.node_utils import step_log, trace_node
@@ -55,15 +55,15 @@ def step_1_validate_and_setup(state: ImportNodeState) -> Path:
 @step_log("上传 PDF, 轮询等待转换完成")
 def step_2_upload_and_poll(pdf_path: Path) -> str:
     """上传 PDF 到 MinerU 并轮询转换结果, 返回结果包 (zip) 的下载地址。"""
-    if not config.mineru.base_url or not config.mineru.api_key:
+    if not ENV_CONFIG.mineru.base_url or not ENV_CONFIG.mineru.api_key:
         raise ValueError("MinerU 配置错误, 请检查 .env 是否正确配置 MINERU_ 相关参数")
 
     # 配置参考: https://mineru.net/apiManage/docs
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {config.mineru.api_key}",
+        "Authorization": f"Bearer {ENV_CONFIG.mineru.api_key}",
     }
-    apply_url = f"{config.mineru.base_url}/file-urls/batch"
+    apply_url = f"{ENV_CONFIG.mineru.base_url}/file-urls/batch"
     payload = {
         "files": [{"name": pdf_path.name, "data_id": pdf_path.stem}],
         "model_version": "vlm",
@@ -95,7 +95,7 @@ def step_2_upload_and_poll(pdf_path: Path) -> str:
         if upload_resp.status_code != 200:
             raise requests.RequestException(f"上传文件失败: {upload_resp.text}")
 
-    poll_url = f"{config.mineru.base_url}/extract-results/batch/{batch_id}"
+    poll_url = f"{ENV_CONFIG.mineru.base_url}/extract-results/batch/{batch_id}"
     logger.debug(f"上传文件成功, 轮询 url: {poll_url}")
 
     start = time.time()

@@ -56,8 +56,8 @@ class Settings(BaseSettings):
 def get_global_settings() -> Settings:
     return Settings()
 
-config = get_global_settings()
+ENV_CONFIG = get_global_settings()
 
 if __name__ == "__main__":
     from rich import print as rprint
-    rprint(config)
+    rprint(ENV_CONFIG)

@@ -96,7 +96,7 @@ shop-assistant/
 │   ├── api/                # FastAPI 相关源码 (仅空 __init__.py, 待实现)
 │   ├── common/             # 公共逻辑
 │   │   ├── config/         # 各种配置类
-│   │   │   └── settings.py # pydantic-settings 配置: LogSettings / MineruSettings / Settings
+│   │   │   └── env_config.py # pydantic-settings 配置: LogSettings / MineruSettings / Settings / ENV_CONFIG
 │   │   ├── enum/           # 枚举定义
 │   │   │   └── doc_type.py # DocType (PDF / MARKDOWN / UNKNOWN) + from_filename()
 │   │   └── prompt/         # 提示词模板 (空, 待实现)
@@ -124,7 +124,7 @@ shop-assistant/
 │   ├── unit/               # 单元测试, 与 src 目录一一镜像 (默认运行)
 │   │   ├── conftest.py     # autouse 的 clean_task_store, 隔离 task_utils 全局字典
 │   │   ├── api/ web/       # 占位 (仅 .gitkeep)
-│   │   ├── common/         # config/settings_test.py, enum/doc_type_test.py, prompt/ (占位)
+│   │   ├── common/         # config/env_config_test.py, enum/doc_type_test.py, prompt/ (占位)
 │   │   ├── processor/      # import_processor/ (main_graph_test.py, state_test.py, nodes/ 7 个)
 │   │   │                   # query_processor/ (占位)
 │   │   └── utils/          # logging / node / path / task_utils_test.py

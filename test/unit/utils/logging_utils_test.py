@@ -2,12 +2,12 @@
 
 被测对象:
     _can_write_log_dir   日志目录可写性探测 (EAFP: 直接试写一个探针文件)
-    init_logger          按 config.log 重新配置 loguru (控制台 / 文件两个开关)
+    init_logger          按 ENV_CONFIG.log 重新配置 loguru (控制台 / 文件两个开关)
     fix_log_position     修正日志的 file / function / line 字段
 
 说明:
     - init_logger() 操作的是全局 loguru logger (`_logger.remove()`), 因此 autouse
-      fixture 在每个用例结束后按真实 config 重新初始化, 不把测试配置泄漏给其它模块。
+      fixture 在每个用例结束后按真实 ENV_CONFIG 重新初始化, 不把测试配置泄漏给其它模块。
     - 对 `_logger` 的替换一律用 pytest.MonkeyPatch.context(), 退出 with 即自动还原,
       不必关心 fixture 的销毁顺序。
     - 这里断言的是「传给 loguru 的参数」而不是「日志有没有打出来」: init_logger 用的是
@@ -55,7 +55,7 @@ class _FakeFrame:
 
 @pytest.fixture(autouse=True)
 def _restore_logger():
-    """用例结束后按真实 config 重建全局 loguru sink。"""
+    """用例结束后按真实 ENV_CONFIG 重建全局 loguru sink。"""
     yield
     logging_utils.init_logger()
 
@@ -113,8 +113,8 @@ def test_can_write_log_dir_is_thread_safe(monkeypatch, tmp_path):
 # --------------------------------------------------------------------------- #
 def test_init_logger_adds_console_sink_only():
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(logging_utils.config.log, "console_enable", True)
-        mp.setattr(logging_utils.config.log, "file_enable", False)
+        mp.setattr(logging_utils.ENV_CONFIG.log, "console_enable", True)
+        mp.setattr(logging_utils.ENV_CONFIG.log, "file_enable", False)
         spy = _LoggerSpy()
         mp.setattr(logging_utils, "_logger", spy)
 
@@ -125,7 +125,7 @@ def test_init_logger_adds_console_sink_only():
         assert len(spy.added) == 1
         console = spy.added[0]
         assert console["sink"] is sys.stdout
-        assert console["level"] == logging_utils.config.log.console_level
+        assert console["level"] == logging_utils.ENV_CONFIG.log.console_level
         assert console["format"] == logging_utils.LOG_FORMAT
         assert console["colorize"] is True
         assert console["enqueue"] is True
@@ -134,8 +134,8 @@ def test_init_logger_adds_console_sink_only():
 
 def test_init_logger_adds_nothing_when_both_disabled():
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(logging_utils.config.log, "console_enable", False)
-        mp.setattr(logging_utils.config.log, "file_enable", False)
+        mp.setattr(logging_utils.ENV_CONFIG.log, "console_enable", False)
+        mp.setattr(logging_utils.ENV_CONFIG.log, "file_enable", False)
         spy = _LoggerSpy()
         mp.setattr(logging_utils, "_logger", spy)
 
@@ -156,8 +156,8 @@ def test_init_logger_adds_file_sink_with_config(monkeypatch, tmp_path):
     monkeypatch.setattr(logging_utils, "LOG_FILE_PATH", log_path)
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(logging_utils.config.log, "console_enable", False)
-        mp.setattr(logging_utils.config.log, "file_enable", True)
+        mp.setattr(logging_utils.ENV_CONFIG.log, "console_enable", False)
+        mp.setattr(logging_utils.ENV_CONFIG.log, "file_enable", True)
         spy = _LoggerSpy()
         mp.setattr(logging_utils, "_logger", spy)
 
@@ -166,9 +166,9 @@ def test_init_logger_adds_file_sink_with_config(monkeypatch, tmp_path):
         assert len(spy.added) == 1
         file_sink = spy.added[0]
         assert file_sink["sink"] == log_path
-        assert file_sink["level"] == logging_utils.config.log.file_level
+        assert file_sink["level"] == logging_utils.ENV_CONFIG.log.file_level
         assert file_sink["rotation"] == "00:00"
-        assert file_sink["retention"] == logging_utils.config.log.file_retention
+        assert file_sink["retention"] == logging_utils.ENV_CONFIG.log.file_retention
         assert file_sink["encoding"] == "utf-8"
         assert file_sink["delay"] is True  # 第一条日志才建文件
         assert spy.warnings == []
@@ -180,8 +180,8 @@ def test_init_logger_adds_console_then_file(monkeypatch, tmp_path):
     monkeypatch.setattr(logging_utils, "LOG_FILE_PATH", log_path)
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(logging_utils.config.log, "console_enable", True)
-        mp.setattr(logging_utils.config.log, "file_enable", True)
+        mp.setattr(logging_utils.ENV_CONFIG.log, "console_enable", True)
+        mp.setattr(logging_utils.ENV_CONFIG.log, "file_enable", True)
         spy = _LoggerSpy()
         mp.setattr(logging_utils, "_logger", spy)
 
@@ -199,8 +199,8 @@ def test_init_logger_skips_file_sink_when_dir_unwritable(
     monkeypatch.setattr(logging_utils, "LOG_FILE_PATH", blocker / "logs" / "app.log")
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(logging_utils.config.log, "console_enable", False)
-        mp.setattr(logging_utils.config.log, "file_enable", True)
+        mp.setattr(logging_utils.ENV_CONFIG.log, "console_enable", False)
+        mp.setattr(logging_utils.ENV_CONFIG.log, "file_enable", True)
         spy = _LoggerSpy()
         mp.setattr(logging_utils, "_logger", spy)
 

@@ -69,8 +69,8 @@ def _make_pdf(tmp_path: Path, name: str = "doc.pdf") -> Path:
 
 
 def _configure_mineru(monkeypatch, *, base_url: str = "https://mineru.example", api_key: str = "secret"):
-    monkeypatch.setattr(node_pdf_to_md.config.mineru, "base_url", base_url)
-    monkeypatch.setattr(node_pdf_to_md.config.mineru, "api_key", api_key)
+    monkeypatch.setattr(node_pdf_to_md.ENV_CONFIG.mineru, "base_url", base_url)
+    monkeypatch.setattr(node_pdf_to_md.ENV_CONFIG.mineru, "api_key", api_key)
 
 
 def _apply_response(batch_id: str = "batch-1", upload_url: str = "https://upload.example/presign") -> FakeResponse:
