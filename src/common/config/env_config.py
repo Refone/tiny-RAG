@@ -48,9 +48,21 @@ class MineruSettings(BaseSettings):
     base_url: str = "https://mineru.net/api/v4"
     api_key: str = ""
 
+class VLMSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        **BASE_CONFIG,
+        env_prefix="VLM_"
+    )
+
+    base_url: str = "https://api.siliconflow.cn/v1"
+    api_key: str = ""
+    model_name: str = "Qwen/Qwen3-VL-32B-Instruct"
+    rpm: int = 1
+
 class Settings(BaseSettings):
     log: LogSettings = Field(default_factory=LogSettings)
     mineru: MineruSettings = Field(default_factory=MineruSettings)
+    vlm: VLMSettings = Field(default_factory=VLMSettings)
 
 @lru_cache
 def get_global_settings() -> Settings:
