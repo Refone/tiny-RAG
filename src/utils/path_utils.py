@@ -59,6 +59,9 @@ def get_src_root() -> Path:
         raise FileNotFoundError(f"未找到 src 目录: {src}")
     return src
 
+PROJECT_ROOT = get_project_root()
+SRC_ROOT = get_src_root()
+
 if __name__ == "__main__":
     print(get_project_root())
     print(get_src_root())

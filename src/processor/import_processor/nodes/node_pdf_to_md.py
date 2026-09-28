@@ -67,6 +67,7 @@ def step_2_upload_and_poll(pdf_path: Path) -> str:
     payload = {
         "files": [{"name": pdf_path.name, "data_id": pdf_path.stem}],
         "model_version": "vlm",
+        "is_ocr": True,
     }
 
     apply_resp = requests.post(apply_url, headers=headers, json=payload)

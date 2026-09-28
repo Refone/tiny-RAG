@@ -1,7 +1,43 @@
+import base64
+import os
+
 from langchain.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 
 from common.config.env_config import ENV_CONFIG
+
+import time
+import threading
+from collections import deque
+
+class SlidingWindowRateLimiter:
+    """本地滑动窗口限速器（单进程）。"""
+
+    def __init__(self, max_requests: int, window_seconds: float = 60.0):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self._times = deque()
+        self._lock = threading.Lock()
+
+    def acquire(self):
+        while True:
+            with self._lock:
+                now = time.monotonic()
+                # 移除滑出窗口的记录
+                while self._times and now - self._times[0] >= self.window_seconds:
+                    self._times.popleft()
+
+                if len(self._times) < self.max_requests:
+                    self._times.append(now)
+                    return
+
+                # 需要等待的时间
+                wait = self.window_seconds - (now - self._times[0])
+
+            # 锁外 sleep
+            time.sleep(max(wait, 0.001))
+
+RATE_LIMITER = SlidingWindowRateLimiter(ENV_CONFIG.vlm.rpm)
 
 VLM = ChatOpenAI(
     model=ENV_CONFIG.vlm.model_name,
@@ -9,14 +45,7 @@ VLM = ChatOpenAI(
     api_key=ENV_CONFIG.vlm.api_key,
 )
 
-if __name__ == '__main__':
-    import base64
-    import os
-
-    from langchain_core.messages import HumanMessage
-    from rich import print as rprint
-
-    def encode_image(image_path: str) -> str:
+def encode_image(image_path: str) -> str:
         """把本地图片编码成 Data URL"""
         ext = os.path.splitext(image_path)[1].lower().lstrip(".")
         mime_map = {
@@ -33,6 +62,9 @@ if __name__ == '__main__':
 
         return f"data:image/{mime};base64,{b64}"
 
+if __name__ == '__main__':
+    from langchain_core.messages import HumanMessage
+    from rich import print as rprint
 
     local_image_path = f"{os.getcwd()}/test/test-data/RAG.png"
     remote_image_url = "https://pics3.baidu.com/feed/f31fbe096b63f624208f2298bc4e78e91b4ca372.jpeg@f_auto?token=4e343c1319d17140423146fb4bb60b6b"
