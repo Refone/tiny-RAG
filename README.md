@@ -5,6 +5,7 @@
 ```shell
 docker  # docker 启动文件
 docs    # 项目文档与笔记
+dev     # 实验性调试脚本 (直接运行观察 src 逻辑, 不受测试保护)
 src     # 主要源码
 ├── api     # FastAPI 相关源码
 ├── common  # 公共逻辑
@@ -54,3 +55,12 @@ uv run pytest -k doc_type          # 只跑名字匹配的用例
 ```shell
 uv run pytest test/smoke -s -v --run-smoke
 ```
+
+## 调试脚本 (dev/)
+
+`dev/` 目录存放实验性调试主流程的脚本, 不纳入 pytest 收集范围, 也不要求被测试
+保护。调试某个流程时, 直接运行 `dev/` 下对应脚本即可 (脚本内部已把 `src/` 加入
+`sys.path`, 无需手动设置 `PYTHONPATH`):
+
+- `dev/import_pdf.py` — 调试导入流程 (import_processor) 的 PDF 分支, 以 hak180 PDF
+  为样例走 MinerU 转换, 运行后打印完成节点链与最终 state

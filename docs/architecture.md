@@ -89,6 +89,9 @@ shop-assistant/
 │   ├── setup.md            # 环境部署 (Milvus docker compose)
 │   ├── poll_response.json  # MinerU 轮询响应样例
 │   └── request_url_response.json  # MinerU 申请上传地址响应样例
+├── dev/                    # 实验性调试脚本 (直接运行观察 src 逻辑, 不受测试保护)
+│   ├── README.md           # dev 目录用途与文件清单说明
+│   └── import_pdf.py       # 导入流程 (PDF 分支) 调试脚本, 走 MinerU 转换
 ├── src/                    # 主要源码 (即 import 根, 靠 PYTHONPATH=src 暴露)
 │   ├── api/                # FastAPI 相关源码 (仅空 __init__.py, 待实现)
 │   ├── common/             # 公共逻辑

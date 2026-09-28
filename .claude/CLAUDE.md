@@ -14,6 +14,7 @@ RAG Agent，LangGraph 编排。导入链路已实现，查询链路待实现。
 - 运行单元测试：`uv run pytest`（默认只跑 unit，smoke / integration 自动跳过）
 - 运行冒烟测试：`uv run pytest test/smoke -s -v --run-smoke`（真实 apikey / 网络）
 - 运行集成测试：`uv run pytest --run-integration`（需 Milvus/MinerU/LLM）
+- 调试导入流程 (PDF)：直接运行 `dev/import_pdf.py`
 - 安装依赖：`uv sync`
 
 ## 导入链路（7 节点）
@@ -35,6 +36,7 @@ RAG Agent，LangGraph 编排。导入链路已实现，查询链路待实现。
 - `src/utils/node_utils.py` — 节点装饰器
 - `test/unit/` — 单元测试，与 src 镜像
 - `test/smoke/` — 冒烟测试，真实外部服务（`--run-smoke` 开启）
+- `dev/` — 实验性调试脚本（直接运行观察 src 逻辑，不受测试保护）
 
 ## 架构图
 
