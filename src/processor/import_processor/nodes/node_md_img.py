@@ -1,12 +1,12 @@
-import base64
 from pathlib import Path
-import re
-from typing import List, TypedDict
+from typing import TypedDict
 
 from langchain.messages import HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 
+from common.client.minio_client import get_minio_client
 from common.config.app_config import APP_CONFIG
+from common.config.env_config import ENV_CONFIG
 from common.model.vlm import RATE_LIMITER, VLM, encode_image
 from common.prompt.load_prompt import load_prompt
 from processor.import_processor.state import ImportNodeState, create_state
@@ -40,7 +40,9 @@ def node_md_img(state: ImportNodeState) -> ImportNodeState:
 
     image_info_list = step_2_scan_images(md_content, img_dir)
 
-    summary_dict = step_3_image_summary(image_info_list, state)
+    # summary_dict = step_3_image_summary(state, image_info_list)
+
+    url_dict = step_4_upload_images_get_url(state, image_info_list)
 
     return state
 
@@ -79,7 +81,7 @@ class ImageInfo(TypedDict):
     post_text: str
 
 @step_log(desc="扫描图片文件夹图片")
-def step_2_scan_images(md_content: str, img_dir: Path) -> List[ImageInfo]:
+def step_2_scan_images(md_content: str, img_dir: Path) -> list[ImageInfo]:
     image_info_list = []
     if not img_dir:
         return image_info_list
@@ -115,14 +117,14 @@ def step_2_scan_images(md_content: str, img_dir: Path) -> List[ImageInfo]:
     return image_info_list
 
 @step_log(desc="调用 VLM 获取图像摘要")
-def step_3_image_summary(image_info_list: List[ImageInfo], state: ImportNodeState) -> dict[str, str]:
+def step_3_image_summary(state: ImportNodeState, image_info_list: list[ImageInfo]) -> dict[str, str]:
     """
     调用 VLM 获取图像摘要
     Args:
-        image_info_list (List[ImageInfo]): 图片信息列表
-        img_dir (Path): 图片文件夹路径
+        state: 节点状态(包含文档名)
+        image_info_list (list[ImageInfo]): 图片信息列表
     Returns:
-        dict[str, str]: { "<图片路径>" : "描述摘要" }
+        dict[str, str]: { "<图片名>" : "描述摘要" }
     """
     summary_dict: dict[str, str] = {}
 
@@ -150,11 +152,43 @@ def step_3_image_summary(image_info_list: List[ImageInfo], state: ImportNodeStat
         RATE_LIMITER.acquire()  # 限速
         image_summary = chains.invoke([message])
 
-        summary_dict[str(image_info["path"])] = image_summary
+        summary_dict[image_info['name']] = image_summary
         logger.debug(f"{image_path} 图片摘要: {image_summary}")
 
     return summary_dict
 
+def step_4_upload_images_get_url(state: ImportNodeState, image_info_list: list[ImageInfo]) -> dict[str, str]:
+    """上传图片至 Minio
+
+    Args:
+        state: 节点状态(包含文档名)
+        image_info_list: list[ImageInfo] 图片信息列表
+    returns:
+        dict[str, str]: (<图片名> : url)
+    """
+    image_url_dict = {}
+    minio_client = get_minio_client()
+    prefix = ENV_CONFIG.minio.image_dir + "/" + state["file_title"]
+
+    # 查询 MinIO 中是否已经存在同名文件夹, 若存在, 直接删除(同名则覆盖原则)
+    del_cnt = minio_client.clear_dir_if_exist(prefix)
+    if del_cnt > 0:
+        logger.info(f"{prefix} 覆盖删除 {del_cnt} 张图片")
+
+    # 依次上传图片
+    for image in image_info_list:
+        try:
+            url = minio_client.upload_file(
+                prefix=prefix,
+                as_name=image["name"],
+                file_path=image["path"]
+            )
+            image_url_dict[image['name']] = url
+            logger.debug(f"{image['name']} 上传成功: {url}")
+        except Exception as e:
+            logger.warning(f"{image['name']} 上传失败, 跳过. error: {e}")
+
+    return image_url_dict
 
 if __name__ == "__main__":
     from rich import print as rprint

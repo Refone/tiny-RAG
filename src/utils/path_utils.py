@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from functools import lru_cache
 
 def from_project_root(path: str | Path) -> Path:
     return get_project_root() / path
@@ -32,7 +31,6 @@ def _iter_ancestors(start: Path):
             return
         current = parent
 
-@lru_cache(maxsize=1)
 def get_project_root() -> Path:
     # 1. 环境变量优先: 生产 / 容器 / CI 显式指定
     env_root = os.getenv("PROJECT_ROOT")
@@ -52,7 +50,6 @@ def get_project_root() -> Path:
         "且未设置环境变量 PROJECT_ROOT"
     )
 
-@lru_cache(maxsize=1)
 def get_src_root() -> Path:
     src = get_project_root() / "src"
     if not src.is_dir():

@@ -1,4 +1,5 @@
 import base64
+from mimetypes import guess_type
 import os
 
 from langchain.messages import HumanMessage
@@ -47,20 +48,10 @@ VLM = ChatOpenAI(
 
 def encode_image(image_path: str) -> str:
         """把本地图片编码成 Data URL"""
-        ext = os.path.splitext(image_path)[1].lower().lstrip(".")
-        mime_map = {
-            "jpg": "jpeg",
-            "jpeg": "jpeg",
-            "png": "png",
-            "gif": "gif",
-            "webp": "webp",
-        }
-        mime = mime_map.get(ext, "jpeg")
-
         with open(image_path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode("utf-8")
 
-        return f"data:image/{mime};base64,{b64}"
+        return f"data:image/{guess_type(image_path)[0]};base64,{b64}"
 
 if __name__ == '__main__':
     from langchain_core.messages import HumanMessage
