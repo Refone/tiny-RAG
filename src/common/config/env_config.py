@@ -59,16 +59,26 @@ class VLMSettings(BaseSettings):
     model_name: str = "Qwen/Qwen3-VL-32B-Instruct"
     rpm: int = 1
 
-class Settings(BaseSettings):
+class MinioSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        **BASE_CONFIG,
+        env_prefix="MINIO_"
+    )
+
+    endpoint: str = "127.0.0.1:9000"
+    access_key: str = "minioadmin"
+    secret_key: str = "minioadmin"
+    bucket_name: str = "knowlege-hub-files"
+    image_dir: str = "upload-images"
+    secure: bool = False
+
+class EnvConfig(BaseSettings):
     log: LogSettings = Field(default_factory=LogSettings)
     mineru: MineruSettings = Field(default_factory=MineruSettings)
     vlm: VLMSettings = Field(default_factory=VLMSettings)
+    minio: MinioSettings = Field(default_factory=MinioSettings)
 
-@lru_cache
-def get_global_settings() -> Settings:
-    return Settings()
-
-ENV_CONFIG = get_global_settings()
+ENV_CONFIG = EnvConfig()
 
 if __name__ == "__main__":
     from rich import print as rprint

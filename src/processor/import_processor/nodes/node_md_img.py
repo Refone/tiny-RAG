@@ -81,6 +81,9 @@ class ImageInfo(TypedDict):
 @step_log(desc="扫描图片文件夹图片")
 def step_2_scan_images(md_content: str, img_dir: Path) -> List[ImageInfo]:
     image_info_list = []
+    if not img_dir:
+        return image_info_list
+
     for image_path in img_dir.iterdir():
         image_suffix = image_path.suffix.lower().lstrip(".")
         if not image_suffix in APP_CONFIG.support_image_format:
