@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 from typing import TypedDict
 
 from langchain.messages import HumanMessage
@@ -21,7 +22,7 @@ from utils.logging_utils import logger
     "origin_file_path": -,
     "markdown_file_path": md 文件路径,
     "file_title": 文件标题(不含后缀),
-    "md_content": "",
+    "md_content": "" -> "..."
     "item_name": "",
     "chunks": [],
 """
@@ -36,18 +37,22 @@ def node_md_img(state: ImportNodeState) -> ImportNodeState:
     4. 替换 Markdown 中的图片连接为 MinIO URL
     """
     # 1. 状态校验
-    md_content, md_path, img_dir = step_1_validate_and_load_data(state)
+    step_1_validate_and_load_data(state)
 
-    image_info_list = step_2_scan_images(md_content, img_dir)
+    image_info_list = step_2_scan_images(state)
 
-    # summary_dict = step_3_image_summary(state, image_info_list)
+    summary_dict = step_3_image_summary(state, image_info_list)
 
     url_dict = step_4_upload_images_get_url(state, image_info_list)
+
+    step_5_md_content_image_replace(state, summary_dict, url_dict)
+
+    step_6_new_content_to_disk(state)
 
     return state
 
 @step_log(desc="检验文件并加载")
-def step_1_validate_and_load_data(state) -> tuple[str, Path, Path | None]:
+def step_1_validate_and_load_data(state) -> None:
     md_path = state.get("markdown_file_path")
     if not md_path:
         raise ValueError("Markdown 文件路径不存在")
@@ -57,13 +62,7 @@ def step_1_validate_and_load_data(state) -> tuple[str, Path, Path | None]:
     if not md_path.exists():
         raise FileNotFoundError(f"Markdown 文件不存在: {md_path}")
 
-    md_content = md_path.read_text(encoding="utf-8")
-
-    img_dir = md_path.parent / "images" # 依赖 MinerU zip 包解包结果
-    if not img_dir.exists():
-        img_dir = None
-
-    return md_content, md_path, img_dir
+    state['md_content'] = md_path.read_text(encoding="utf-8")
 
 class ImageInfo(TypedDict):
     """
@@ -81,9 +80,13 @@ class ImageInfo(TypedDict):
     post_text: str
 
 @step_log(desc="扫描图片文件夹图片")
-def step_2_scan_images(md_content: str, img_dir: Path) -> list[ImageInfo]:
+def step_2_scan_images(state: ImportNodeState) -> list[ImageInfo]:
+
     image_info_list = []
-    if not img_dir:
+
+    md_path = Path(state["markdown_file_path"])
+    img_dir = md_path.parent / "images" # 依赖 MinerU zip 包解包结果
+    if not img_dir.exists():
         return image_info_list
 
     for image_path in img_dir.iterdir():
@@ -95,13 +98,13 @@ def step_2_scan_images(md_content: str, img_dir: Path) -> list[ImageInfo]:
 
         # 获取图片描述符在 Markdown 中的位置
         # 一般来说, md 里面不会有两张一样的图, 如果有, 仅取第一次也是合理的.
-        pos = find_image_position(md_content, image_name)
+        pos = find_image_position(state["md_content"], image_name)
         if not pos:
             # 仅出现在 images 文件夹中, 没有出现在 markdown 文字中
             continue
         start, end = pos
 
-        pre_text, post_text = extract_surrounding_context(md_content, start, end)
+        pre_text, post_text = extract_surrounding_context(state["md_content"], start, end)
 
         logger.debug(f"{image_name} 图片描述符位置: [{start}, {end}],\n前文字: [{pre_text}]\n后文字[{post_text}]")
         image_info_list.append(
@@ -157,6 +160,7 @@ def step_3_image_summary(state: ImportNodeState, image_info_list: list[ImageInfo
 
     return summary_dict
 
+@step_log("图片上传 Minio")
 def step_4_upload_images_get_url(state: ImportNodeState, image_info_list: list[ImageInfo]) -> dict[str, str]:
     """上传图片至 Minio
 
@@ -189,6 +193,34 @@ def step_4_upload_images_get_url(state: ImportNodeState, image_info_list: list[I
             logger.warning(f"{image['name']} 上传失败, 跳过. error: {e}")
 
     return image_url_dict
+
+@step_log("替换 markdown 中的图片标记")
+def step_5_md_content_image_replace(state: ImportNodeState,
+                                    image_summary_dict: dict[str, str],
+                                    image_url_dict: dict[str, str]) -> None:
+    """
+    对 md 文件图片标记进行替换      ![](本地路径) -> ![摘要](网络地址)
+    Args:
+        state:  节点状态(取 md_content, md 整文文档)
+        image_summary_dict: dict[str, str]  {"图片名":"图片摘要"}
+        image_url_dict: dict[str, str]  {"图片名", "url"}
+    """
+    cnt = 0
+    for image_name, summary in image_summary_dict.items():
+        url = image_url_dict.get(image_name)
+        reg = re.compile(r"\!\[.*?\]\(.*?" + re.escape(image_name) + r".*?\)")
+
+        state["md_content"] = reg.sub(lambda _: f"![{summary}]({url})", state["md_content"])
+        cnt += 1
+    logger.info(f"完成文档中 {cnt} 处替换")
+
+@step_log("保存修改后的 markdown")
+def step_6_new_content_to_disk(state: ImportNodeState) -> None:
+    origin_md_path: Path = Path(state["markdown_file_path"])
+    fixed_md_path: Path = origin_md_path.with_name(f"{origin_md_path.stem}_fixed.md")
+
+    fixed_md_path.write_text(encoding="utf-8", data=state["md_content"])
+    logger.info(f"图片标注修正后的内容已写入 {str(fixed_md_path)}")
 
 if __name__ == "__main__":
     from rich import print as rprint

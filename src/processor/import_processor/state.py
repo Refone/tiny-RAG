@@ -10,6 +10,11 @@ class ImportNodeState(TypedDict, total=False):
     注意: 这是整个导入流程的「唯一事实来源」。
     任何节点需要读写新字段时, 必须先在这里声明,
     否则 LangGraph 会静默丢弃未声明的 key (不报错) 。
+
+    TODO: 考虑到 Graph State 可能需要做 持久化 和 跨平台,
+          故最好使用原生数据结构, 以便正常序列化。
+          所以路径保持 str, 而非 Path,
+          枚举类型最好也不要用 StrEnum
     """
     # 任务 ID
     task_id: str
