@@ -38,8 +38,7 @@ class ImportNodeState(TypedDict, total=False):
     item_name: str
 
     # 切分后的 chunk 列表 (node_document_split 产出)
-    # TODO: 确定 chunk 结构 (文本 + metadata + 向量) 后, 收敛为具体的 TypedDict
-    chunks: list[dict]
+    chunks: list[dict[str, any]]
 
 
 __default_state: ImportNodeState = {
