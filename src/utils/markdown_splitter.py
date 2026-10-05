@@ -3,6 +3,7 @@ import copy
 import re
 from typing import TypedDict
 
+from chunkana import ChunkConfig, chunk_markdown
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 class Chunk(TypedDict):
@@ -90,28 +91,17 @@ def _split_oversized_chunks(
     for chunk in chunk_list:
         if len(chunk["content"]) > max_chunk_size:
         # 块过长，需要拆分
-            splitter = RecursiveCharacterTextSplitter(
-                chunk_size=max_chunk_size,
-                chunk_overlap=overlap_size,
-                length_function=len,
-                is_separator_regex=True,
-                separators=[
-                        r"\n(?=#{1,6} )",      # 标题前换行，标题保留到下一块
-                        r"\n(?=```)",          # 代码块前换行
-                        r"\n(?=~~~)",          # 另一种代码块
-                        r"\n\n",               # 段落
-                        r"\n(?=[-*+] )",       # 无序列表项
-                        r"\n(?=\d+\. )",       # 有序列表项，匹配任意数字
-                        r"\n",                 # 换行
-                        r"(?<=[。！？!?])",     # 中英文句子结束
-                ],
+            config = ChunkConfig(
+                max_chunk_size=max_chunk_size,
+                min_chunk_size=max_chunk_size // 10,
+                overlap_size=overlap_size,
             )
 
-            split_chunks = splitter.split_text(chunk["content"])
+            list_chunks = chunk_markdown(chunk["content"], config)
 
-            for split_text in split_chunks:
+            for c in list_chunks:
                 result_chunks.append(Chunk(
-                    content=split_text,
+                    content=c.content,
                     level=chunk["level"],
                     title_stack=copy.deepcopy(chunk["title_stack"]),
                 ))

@@ -608,6 +608,15 @@ wheels = [
 ]
 
 [[package]]
+name = "chunkana"
+version = "0.1.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/09/e3/cbddee5ae4050438d1c70a22f8ab1a6ff360421fb25750fbb67b1a73442c/chunkana-0.1.6.tar.gz", hash = "sha256:b04e73b0f3c5351b642557f3447760516f51b1969661623f8f80d64fd8ace512", size = 1027155, upload-time = "2026-01-09T22:10:35.867Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/12/6b/e7443960c99e2f9daf073ea8ebd5b5b391fa8d39ee54ae6c75d302cab613/chunkana-0.1.6-py3-none-any.whl", hash = "sha256:3dc6d61265aab8e544cf32dfc1a9b668624559b37f194c48e55ee9892ecc14f3", size = 94306, upload-time = "2026-01-09T22:10:33.89Z" },
+]
+
+[[package]]
 name = "click"
 version = "8.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4610,6 +4619,7 @@ name = "shop-assistant"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "chunkana" },
     { name = "datasets" },
     { name = "fastapi" },
     { name = "flagembedding" },
@@ -4646,6 +4656,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "chunkana", specifier = ">=0.1.6" },
     { name = "datasets", specifier = ">=5.0.1" },
     { name = "fastapi", specifier = ">=0.141.1" },
     { name = "flagembedding", specifier = ">=1.4.2" },
