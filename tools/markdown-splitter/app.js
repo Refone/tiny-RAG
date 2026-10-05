@@ -1,27 +1,51 @@
 'use strict';
 
+/*
+ * Markdown Splitter · 纯静态查看器
+ *
+ * 不发任何网络请求, 也不执行 Python。数据完全来自你拖进来的 JSON 文件:
+ *
+ *   1) 命令行生成数据:
+ *        python src/utils/markdown_splitter.py     # -> tmp/chunks.json
+ *
+ *   2) 打开本页面 (直接双击 index.html 即可, file:// 也能用),
+ *      把 tmp/chunks.json 拖进窗口 —— 或者点右上角「打开 JSON」选择文件。
+ *
+ * 三种视图 (数据都来自这份 JSON):
+ *   split — 每个 chunk 一张卡片 + 切分边界
+ *   doc   — 按 level / title_stack 把 chunks 重新拼成一篇文档
+ *   meta  — 原始 JSON
+ * 重新生成数据后再拖一次文件即可刷新。
+ */
+
 /* ======================= DOM refs ======================= */
 const $ = (sel) => document.querySelector(sel);
 
 const modeSwitch = $('#modeSwitch');
-const markdownInput = $('#markdownInput');
 const preview = $('#preview');
 const previewHeader = $('#previewHeader');
-const chunkSizeInput = $('#chunkSize');
-const overlapInput = $('#overlap');
-const runBtn = $('#runBtn');
+const srcPath = $('#srcPath');
+const srcMeta = $('#srcMeta');
+const openBtn = $('#openBtn');
+const fileInput = $('#fileInput');
+const dropOverlay = $('#dropOverlay');
+const widthRange = $('#widthRange');
+const widthValue = $('#widthValue');
 
-const sampleMd = document.getElementById('sample-md').textContent.trim() + '\n';
-const embeddedSource =
-  document.getElementById('splitter-source').textContent.trim() + '\n';
+/* 内容显示宽度: 相对窗口宽度的百分比 */
+const WIDTH_KEY = 'markdown-splitter:content-width';
+const WIDTH_MIN = 20;
+const WIDTH_MAX = 100;
+const WIDTH_DEFAULT = 50;
 
 /* ======================= State ======================= */
 const state = {
-  mode: 'origin',        // 'origin' | 'split' | 'meta'
-  chunks: null,          // Chunk[] | null (null = not yet produced)
-  lastError: null,
-  running: false,
-  sourceLabel: null,     // 'live' | 'fallback' | null
+  mode: 'split',      // 'split' | 'doc' | 'meta'
+  chunks: null,       // Chunk[] | null
+  file: null,         // {name, size} | null
+  error: null,
+  loadedAt: null,
+  dragging: false,
 };
 
 /* ======================= helpers ======================= */
@@ -34,12 +58,60 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
+function formatSize(bytes) {
+  if (typeof bytes !== 'number' || Number.isNaN(bytes)) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function clockTime(date) {
+  if (!date) return '';
+  return date.toLocaleTimeString('zh-CN', { hour12: false });
+}
+
+// 没有 CDN (marked 未加载) 时退化成纯文本, 页面依然可用
 function renderMarkdown(text) {
-  try {
-    return marked.parse(text);
-  } catch {
-    return escapeHtml(text);
+  if (window.marked && typeof window.marked.parse === 'function') {
+    try {
+      return marked.parse(text);
+    } catch {
+      /* fall through */
+    }
   }
+  return `<pre class="md-plain">${escapeHtml(text)}</pre>`;
+}
+
+/* ======================= 显示宽度 ======================= */
+function applyWidth(pct, { persist = true } = {}) {
+  const n = Number(pct);
+  const value = Math.min(WIDTH_MAX, Math.max(WIDTH_MIN, Number.isFinite(n) ? Math.round(n) : WIDTH_DEFAULT));
+  document.documentElement.style.setProperty('--content-width', `${value}%`);
+  widthRange.value = String(value);
+  widthValue.textContent = `${value}%`;
+  if (persist) {
+    try {
+      localStorage.setItem(WIDTH_KEY, String(value));
+    } catch {
+      /* file:// 或隐私模式下可能不可用, 忽略 */
+    }
+  }
+  return value;
+}
+
+function initialWidth() {
+  try {
+    const saved = localStorage.getItem(WIDTH_KEY);
+    if (saved != null) return Number(saved);
+  } catch {
+    /* ignore */
+  }
+  return WIDTH_DEFAULT;
+}
+
+// 所有视图的输出都放进这个「按宽度居中」的列里
+function setContent(html) {
+  preview.innerHTML = `<div class="content-column">${html}</div>`;
 }
 
 /* ======================= Segmented switch ======================= */
@@ -69,126 +141,105 @@ function setupSegmented(container, onChange) {
 
 setupSegmented(modeSwitch, (value) => {
   state.mode = value;
-  renderPreview();
+  render();
 });
 
-/* ======================= marked setup ======================= */
-marked.use({ gfm: true, breaks: true });
-
-/* ======================= Pyodide + splitter source ======================= */
-const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/';
-// Resolves to <project-root>/src/utils/markdown_splitter.py when the page is
-// served from the project root. On file:// (or a wrong root) fetch() fails,
-// so we fall back to the embedded copy.
-const SPLITTER_URL = new URL('../../src/utils/markdown_splitter.py', location.href).href;
-
-let pyodidePromise = null;
-let sourceCode = null;   // stripMainBlock()-applied source, cached after first load
-let sourceLabel = null;  // 'live' | 'fallback'
-
-function getPyodide() {
-  if (!pyodidePromise) {
-    pyodidePromise = loadPyodide({ indexURL: PYODIDE_URL });
-  }
-  return pyodidePromise;
+/* ======================= marked (async 加载, 到了再重渲染) ======================= */
+function onMarkedReady() {
+  if (!window.marked || typeof window.marked.use !== 'function') return;
+  marked.use({ gfm: true, breaks: true });
+  render();   // 用真正的 Markdown 渲染重刷一次
 }
 
-// The source file ends with an `if __name__ == "__main__":` demo block that
-// imports `rich` and reads a local file. We only need the module definitions.
-function stripMainBlock(src) {
-  return src.replace(/\nif __name__\s*==\s*["']__main__["']\s*:[\s\S]*$/, '');
-}
+// index.html 里 marked 是 async 的: 可能先于本文件执行完 (命中缓存), 也可能之后才到
+if (window.marked) onMarkedReady();
+window.__onMarkedReady = onMarkedReady;
 
-// Fetch the live file first; fall back to the embedded copy so the app also
-// works when opened directly from disk (file://) with no server.
-async function loadSource() {
-  try {
-    const resp = await fetch(SPLITTER_URL);
-    if (resp.ok) {
-      sourceLabel = 'live';
-      return stripMainBlock(await resp.text());
-    }
-  } catch {
-    // file:// or network failure → fall through to embedded copy
-  }
-  sourceLabel = 'fallback';
-  return stripMainBlock(embeddedSource);
-}
-
-/* ======================= Run split_markdown ======================= */
-async function runSplitter({ refreshSource = true } = {}) {
-  if (state.running) return;
-  state.running = true;
-  setRunBtn(true);
-
-  const md = markdownInput.value;
-  const maxChunk = Math.max(1, parseInt(chunkSizeInput.value, 10) || 800);
-  const overlap = Math.max(0, parseInt(overlapInput.value, 10) || 0);
+/* ======================= 读取拖入 / 选中的文件 ======================= */
+async function loadFile(file) {
+  if (!file) return;
+  state.file = { name: file.name, size: file.size };
+  state.error = null;
 
   try {
-    const py = await getPyodide();
-    if (refreshSource || sourceCode == null) {
-      sourceCode = await loadSource();
-      py.runPython('import json');
-      py.runPython(sourceCode);
+    const text = await file.text();
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      throw new Error(`不是合法的 JSON (${err.message})`);
+    }
+    if (!Array.isArray(data)) {
+      throw new Error('顶层结构应该是一个数组 (chunk list)');
     }
 
-    // Pass the markdown through the globals dict to avoid any escaping issues.
-    py.globals.set('__md', md);
-    const json = py.runPython(
-      `json.dumps(split_markdown(__md, ${maxChunk}, ${overlap}))`
-    );
-    state.chunks = JSON.parse(json);
-    state.lastError = null;
-    state.sourceLabel = sourceLabel;
+    state.chunks = data;
+    state.loadedAt = new Date();
   } catch (err) {
-    state.lastError = err;
     state.chunks = null;
-    state.sourceLabel = null;
-  } finally {
-    state.running = false;
-    setRunBtn(false);
+    state.error = err;
   }
 
-  if (state.mode !== 'origin') renderPreview();
+  render();
 }
 
-function setRunBtn(running) {
-  runBtn.disabled = running;
-  runBtn.innerHTML = running
-    ? '<span class="btn-icon">◌</span> Running…'
-    : '<span class="btn-icon">▶</span> Run';
+function loadFromFileList(fileList) {
+  const files = Array.from(fileList || []);
+  if (files.length === 0) return;
+  // 优先挑 .json, 否则就用第一个
+  loadFile(files.find((f) => /\.json$/i.test(f.name)) || files[0]);
 }
 
-/* ======================= Preview ======================= */
-function renderPreview() {
-  const md = markdownInput.value;
+/* ======================= Render ======================= */
+function render() {
+  // 顶栏信息
+  srcPath.textContent = state.file ? state.file.name : '未载入';
+  if (state.error) {
+    srcMeta.textContent = '解析失败';
+  } else if (state.chunks) {
+    const parts = [`${state.chunks.length} chunks`];
+    if (state.file) parts.push(formatSize(state.file.size));
+    const t = clockTime(state.loadedAt);
+    if (t) parts.push(t);
+    srcMeta.textContent = parts.join(' · ');
+  } else {
+    srcMeta.textContent = '拖入 chunks.json';
+  }
 
-  if (state.mode === 'origin') {
-    previewHeader.textContent = 'Rendered · origin';
-    preview.innerHTML = `<div class="markdown-body">${renderMarkdown(md)}</div>`;
+  document.body.classList.toggle('dragging', state.dragging);
+
+  if (state.error) {
+    renderError();
+    return;
+  }
+
+  if (!state.chunks) {
+    renderDropzone();
+    return;
+  }
+
+  if (state.chunks.length === 0) {
+    previewHeader.textContent = 'Empty';
+    setContent(`<div class="empty-state">这份 JSON 里没有任何 chunk。</div>`);
     return;
   }
 
   if (state.mode === 'meta') {
     renderMeta();
-    return;
+  } else if (state.mode === 'doc') {
+    renderDoc();
+  } else {
+    renderSplit();
   }
-
-  renderSplit();
 }
 
 function renderSplit() {
-  if (!state.chunks || state.chunks.length === 0) {
-    previewHeader.textContent = 'Split view';
-    preview.innerHTML = `<div class="empty-state">${escapeHtml(emptyMessage())}</div>`;
-    return;
-  }
+  const chunks = state.chunks;
+  previewHeader.textContent = `Chunk cards · ${chunks.length} chunks`;
 
-  previewHeader.textContent =
-    `Split view · ${state.chunks.length} chunks` + sourceSuffix();
   let html = '';
-  state.chunks.forEach((c, i) => {
+  chunks.forEach((c, i) => {
     const title = (c.title_stack || []).join(' › ');
     const level = Number.isFinite(c.level) ? c.level : 0;
 
@@ -201,31 +252,45 @@ function renderSplit() {
     html += `</div>`;
     html += `<div class="chunk-card-body markdown-body">${renderMarkdown(c.content || '')}</div>`;
     html += `</div>`;
-    if (i < state.chunks.length - 1) {
+    if (i < chunks.length - 1) {
       html += `<div class="split-marker"><span class="scissors">✂</span> split ${i + 1} → ${i + 2}</div>`;
     }
   });
-  preview.innerHTML = html;
+
+  setContent(html);
+}
+
+// 只用 JSON 里的信息把文档拼回去: 标题取 title_stack 的最后一项
+function buildDocument(chunks) {
+  const parts = [];
+  chunks.forEach((c) => {
+    const level = Number.isFinite(c.level) ? c.level : 0;
+    const stack = c.title_stack || [];
+    const heading = stack.length ? stack[stack.length - 1] : '';
+    if (level > 0 && heading) parts.push('#'.repeat(Math.min(level, 6)) + ' ' + heading);
+    if (c.content) parts.push(c.content);
+  });
+  return parts.join('\n\n');
+}
+
+function renderDoc() {
+  previewHeader.textContent = `Document · rebuilt from ${state.chunks.length} chunks`;
+  const md = buildDocument(state.chunks);
+  setContent(`<div class="chunk-card"><div class="chunk-card-body markdown-body">${renderMarkdown(md)}</div></div>`);
 }
 
 function renderMeta() {
-  if (!state.chunks || state.chunks.length === 0) {
-    previewHeader.textContent = 'Meta';
-    preview.innerHTML = `<div class="empty-state">${escapeHtml(emptyMessage())}</div>`;
-    return;
-  }
-
-  previewHeader.textContent =
-    `Meta · ${state.chunks.length} chunks` + sourceSuffix();
+  previewHeader.textContent = `JSON · ${state.chunks.length} chunks`;
   const json = JSON.stringify(state.chunks, null, 2);
+  const label = state.file ? state.file.name : 'chunks.json';
 
   let html = '';
   html += `<div class="meta-bar">`;
-  html += `<span class="meta-count">${state.chunks.length} chunks</span>`;
+  html += `<span class="meta-count">${state.chunks.length} chunks · ${escapeHtml(label)}</span>`;
   html += `<button id="copyJsonBtn" class="btn primary" type="button"><span class="btn-icon">⧉</span> Copy JSON</button>`;
   html += `</div>`;
   html += `<pre class="meta-json">${escapeHtml(json)}</pre>`;
-  preview.innerHTML = html;
+  setContent(html);
 
   const copyBtn = $('#copyJsonBtn');
   if (copyBtn) {
@@ -243,47 +308,92 @@ function renderMeta() {
   }
 }
 
-function sourceSuffix() {
-  if (state.sourceLabel === 'fallback') return ' · embedded fallback';
-  if (state.sourceLabel === 'live') return ' · live source';
-  return '';
+function renderDropzone() {
+  previewHeader.textContent = 'No file';
+  setContent(`
+    <button type="button" class="dropzone">
+      <span class="dropzone-icon">⤓</span>
+      <span class="dropzone-title">把 chunks.json 拖到这里</span>
+      <span class="dropzone-sub">或点右上角「打开 JSON」选择文件</span>
+      <span class="dropzone-hint">
+        文件由 <code>python src/utils/markdown_splitter.py</code> 生成到 <code>tmp/chunks.json</code>
+      </span>
+    </button>`);
 }
 
-function emptyMessage() {
-  if (state.lastError) {
-    return `Splitter error: ${state.lastError.message || state.lastError}`;
-  }
-  if (state.running) {
-    return 'Running split_markdown()…';
-  }
-  if (sourceCode == null) {
-    return 'Press “Run” to fetch the splitter source and split the document.';
-  }
-  return 'No chunks produced.';
+function renderError() {
+  previewHeader.textContent = 'Error';
+  const name = state.file ? state.file.name : '文件';
+
+  setContent(`
+    <div class="empty-state">
+      <strong>读取 <code>${escapeHtml(name)}</code> 失败:</strong>
+      ${escapeHtml(state.error.message || state.error)}<br /><br />
+      期望的格式是一个 chunk 数组:<br />
+      <code>[{"content": "…", "level": 2, "title_stack": ["第一章", "习题"]}, …]</code><br /><br />
+      可以用 <code>python src/utils/markdown_splitter.py</code> 生成,
+      然后重新把文件拖进来。
+    </div>`);
 }
 
 /* ======================= Events ======================= */
-runBtn.addEventListener('click', () => runSplitter({ refreshSource: true }));
+// 显示宽度: 拖动滑杆实时生效, 点百分比重置为默认值
+widthRange.addEventListener('input', () => applyWidth(widthRange.value));
+widthRange.addEventListener('change', () => applyWidth(widthRange.value));
+widthValue.addEventListener('click', () => applyWidth(WIDTH_DEFAULT));
 
-let debounceTimer = null;
-function scheduleRun() {
-  // Before the first successful Run there is nothing to re-run with, so wait.
-  if (sourceCode == null) return;
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => runSplitter({ refreshSource: false }), 400);
+// 选择文件
+openBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  loadFromFileList(fileInput.files);
+  fileInput.value = '';   // 允许重复选择同一个文件
+});
+
+// 点击空白区的拖拽提示也能选文件
+preview.addEventListener('click', (e) => {
+  if (e.target.closest('.dropzone')) fileInput.click();
+});
+
+// 拖拽: 整窗口都是投放区
+let dragDepth = 0;
+
+function setDragging(on) {
+  if (state.dragging === on) return;
+  state.dragging = on;
+  document.body.classList.toggle('dragging', on);
 }
 
-markdownInput.addEventListener('input', () => {
-  if (state.mode === 'origin') renderPreview();
-  scheduleRun();
+window.addEventListener('dragenter', (e) => {
+  e.preventDefault();
+  dragDepth += 1;
+  setDragging(true);
 });
-chunkSizeInput.addEventListener('change', scheduleRun);
-chunkSizeInput.addEventListener('input', scheduleRun);
-overlapInput.addEventListener('change', scheduleRun);
-overlapInput.addEventListener('input', scheduleRun);
+
+window.addEventListener('dragover', (e) => {
+  e.preventDefault();               // 必须阻止默认行为, 否则浏览器会直接打开文件
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  setDragging(true);
+});
+
+window.addEventListener('dragleave', (e) => {
+  e.preventDefault();
+  dragDepth = Math.max(0, dragDepth - 1);
+  // relatedTarget 为 null 表示真正离开了窗口
+  if (dragDepth === 0 || e.relatedTarget === null) {
+    dragDepth = 0;
+    setDragging(false);
+  }
+});
+
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dragDepth = 0;
+  setDragging(false);
+  if (e.dataTransfer && e.dataTransfer.files) {
+    loadFromFileList(e.dataTransfer.files);
+  }
+});
 
 /* ======================= Init ======================= */
-(function init() {
-  markdownInput.value = sampleMd;
-  renderPreview();
-})();
+applyWidth(initialWidth(), { persist: false });   // 默认 50% 窗口宽度
+render();
