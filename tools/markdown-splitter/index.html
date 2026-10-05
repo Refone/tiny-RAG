@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Markdown Splitter</title>
+
+  <!-- marked (markdown renderer) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">◫</span>
+      <span class="brand-name">Markdown&nbsp;Splitter</span>
+    </div>
+
+    <div class="controls">
+      <label class="param-input" title="Maximum characters per chunk">
+        <span>max chunk</span>
+        <input id="chunkSize" type="number" value="800" min="20" step="10" />
+      </label>
+
+      <label class="param-input" title="Overlap size between chunks">
+        <span>overlap</span>
+        <input id="overlap" type="number" value="0" min="0" step="10" />
+      </label>
+
+      <!-- Display mode: origin / split / meta -->
+      <div class="segmented" id="modeSwitch" role="group" aria-label="Display mode">
+        <div class="seg-thumb"></div>
+        <button class="seg-btn active" data-value="origin" type="button">origin</button>
+        <button class="seg-btn" data-value="split" type="button">split</button>
+        <button class="seg-btn" data-value="meta" type="button">meta</button>
+      </div>
+
+      <button id="runBtn" class="btn primary" type="button" title="Fetch the splitter source and run split_markdown()">
+        <span class="btn-icon">▶</span> Run
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="split-layout">
+      <div class="pane editor-pane">
+        <div class="pane-header">
+          <span class="dot"></span>
+          <span>markdown source</span>
+          <span class="pane-hint">editable</span>
+        </div>
+        <textarea id="markdownInput" spellcheck="false" aria-label="Markdown source"></textarea>
+      </div>
+      <div class="pane preview-pane">
+        <div class="pane-header">
+          <span class="dot accent"></span>
+          <span id="previewHeader">Rendered · origin</span>
+        </div>
+        <div id="preview" class="preview-scroll"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Default content (kept out of JS to avoid escaping issues) -->
+  <script type="text/plain" id="sample-md">
+# Markdown Splitter
+
+这份文档演示 `src/utils/markdown_splitter.py` 中 `split_markdown()` 的切分结果。
+切分以标题为单位：遇到新的标题时，之前积累的内容会作为一个 `Chunk` 结束。
+
+每个 `Chunk` 都携带三项数据：
+
+- `content` — 该块包含的 Markdown 正文。
+- `level` — 所属标题的层级（`#` 为 1，`##` 为 2，依此类推；正文前的引言为 0）。
+- `title_stack` — 所属章节的标题路径（面包屑）。
+
+## 切分原理
+
+文档按行扫描，标题行会开启一个新的块，代码块整体保留、不会从中间切开。
+
+### 标题栈
+
+- 每个 Chunk 记录它所在的标题栈，例如 `["Markdown Splitter", "切分原理"]`。
+- `level` 与 `title_stack` 的长度保持一致，便于还原文档结构。
+
+### 代码块
+
+代码块中的 `#` 不会触发切分：
+
+```python
+def split_markdown(md_content: str, max_chunk_size: int, overlap_size: int):
+    return markdown_split_by_title(md_content)
+```
+
+## 查看方式
+
+- **origin** — 渲染整篇 Markdown。
+- **split** — 以卡片展示每个 Chunk 的正文与切分边界。
+- **meta** — 以 JSON 格式展示每个 Chunk 的 `content` / `level` / `title_stack`。
+
+调整顶部的 `max chunk` 与 `overlap` 参数，观察切分结果的变化。
+</script>
+
+  <!--
+    Fallback copy of src/utils/markdown_splitter.py (without the
+    `if __name__ == "__main__":` demo block). Used only when the app is opened
+    directly via file:// (or any case where the live file can't be fetched), so
+    the page still works without starting a server. When served from the project
+    root, the Run button fetches the live file instead and this is ignored.
+    Keep this in sync with the real file.
+  -->
+  <script type="text/plain" id="splitter-source">
+import copy
+import re
+from typing import TypedDict
+
+class Chunk(TypedDict):
+    content: str
+    level: int
+    title_stack: list[str]
+
+_TITLE_RE = re.compile(r"^(#{1,6})\s+(.*)$")
+_CODE_RE = re.compile(r'^[ \t]{0,3}(`{3,}|~{3,})')
+
+def markdown_split_by_title(
+    md_content:str,
+    ) -> list[Chunk]:
+    chunk_list = []
+
+    md_lines = md_content.splitlines()  # 将内容按行分割
+    current_title:list[str] = []
+    current_level = 0
+    current_content_lines:list[str] = []
+    is_code = False
+
+    for line_num, line in enumerate(md_lines):
+        # 跳过空行
+        if not line.strip():
+            # 为不破坏 md 结构，仍然把空行加入 current_content_lines
+            current_content_lines.append(line)
+            continue
+
+        # 代码行不分块，整块吞下
+        if _CODE_RE.match(line):
+            is_code = not is_code
+            current_content_lines.append(line)
+            continue
+
+        if is_code:
+            current_content_lines.append(line)
+            continue
+
+        # 判断当前行是正文还是标题
+        if _TITLE_RE.match(line):
+        # 当前行是标题
+            if current_content_lines:
+                # 之前 content 中有内容，这是一个新块的开始
+                # 处理之前的 block
+                last_content = "\n".join(current_content_lines).strip()
+                last_level = current_level
+                last_chunk = Chunk(
+                    content=last_content,
+                    level=last_level,
+                    title_stack=copy.deepcopy(current_title),
+                )
+                if last_content:  # 只有当内容不为空时才加入 chunk_list
+                    chunk_list.append(last_chunk)
+            # 重置当前的状态
+            current_level = len(_TITLE_RE.match(line).group(1))
+            current_content_lines.clear()
+            # current_content_lines.append(line)  # 把标题本身也加入到当前内容中
+            current_title[max(current_level-1,0):] = [_TITLE_RE.match(line).group(2)]
+            continue
+
+        else:
+        # 当前行是正文
+            current_content_lines.append(line)
+
+    if current_content_lines:
+        last_content = "\n".join(current_content_lines).strip()
+        last_level = current_level
+        last_chunk = Chunk(
+            content=last_content,
+            level=last_level,
+            title_stack=copy.deepcopy(current_title),
+        )
+        if last_content:  # 只有当内容不为空时才加入 chunk_list
+            chunk_list.append(last_chunk)
+
+    return chunk_list
+
+def split_markdown(md_content: str,
+                   max_chunk_size: int,
+                   overlap_size: int,
+                   ) -> list[Chunk]:
+    final_chunks = []
+    chunk_list = markdown_split_by_title(md_content)
+
+    return chunk_list
+</script>
+
+  <!-- Pyodide (in-browser Python) -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

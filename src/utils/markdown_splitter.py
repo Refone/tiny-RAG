@@ -1,0 +1,99 @@
+
+import copy
+import re
+from typing import TypedDict
+
+class Chunk(TypedDict):
+    content: str
+    level: int
+    title_stack: list[str]
+
+_TITLE_RE = re.compile(r"^(#{1,6})\s+(.*)$")
+_CODE_RE = re.compile(r'^[ \t]{0,3}(`{3,}|~{3,})')
+
+def markdown_split_by_title(
+    md_content:str,
+    ) -> list[Chunk]:
+    chunk_list = []
+
+    md_lines = md_content.splitlines()  # 将内容按行分割
+    current_title:list[str] = []
+    current_level = 0
+    current_content_lines:list[str] = []
+    is_code = False
+
+    for line_num, line in enumerate(md_lines):
+        # 跳过空行
+        if not line.strip():
+            # 为不破坏 md 结构，仍然把空行加入 current_content_lines
+            current_content_lines.append(line)
+            continue
+
+        # 代码行不分块，整块吞下
+        if _CODE_RE.match(line):
+            is_code = not is_code
+            current_content_lines.append(line)
+            continue
+
+        if is_code:
+            current_content_lines.append(line)
+            continue
+
+        # 判断当前行是正文还是标题
+        if _TITLE_RE.match(line):
+        # 当前行是标题
+            if current_content_lines:
+                # 之前 content 中有内容，这是一个新块的开始
+                # 处理之前的 block
+                last_content = "\n".join(current_content_lines).strip()
+                last_level = current_level
+                last_chunk = Chunk(
+                    content=last_content,
+                    level=last_level,
+                    title_stack=copy.deepcopy(current_title),
+                )
+                if last_content:  # 只有当内容不为空时才加入 chunk_list
+                    chunk_list.append(last_chunk)
+            # 重置当前的状态
+            current_level = len(_TITLE_RE.match(line).group(1))
+            current_content_lines.clear()
+            # current_content_lines.append(line)  # 把标题本身也加入到当前内容中
+            current_title[max(current_level-1,0):] = [_TITLE_RE.match(line).group(2)]
+            continue
+
+        else:
+        # 当前行是正文
+            current_content_lines.append(line)
+
+    if current_content_lines:
+        last_content = "\n".join(current_content_lines).strip()
+        last_level = current_level
+        last_chunk = Chunk(
+            content=last_content,
+            level=last_level,
+            title_stack=copy.deepcopy(current_title),
+        )
+        if last_content:  # 只有当内容不为空时才加入 chunk_list
+            chunk_list.append(last_chunk)
+
+    return chunk_list
+
+def split_markdown(md_content: str,
+                   max_chunk_size: int,
+                   overlap_size: int,
+                   ) -> list[Chunk]:
+    final_chunks = []
+    chunk_list = markdown_split_by_title(md_content)
+
+    return chunk_list
+
+if __name__ == "__main__":
+    from rich import print as rprint
+    md_content = ""
+    md_path = "test/test-data/第一章-初识智能体.md"
+    with open(md_path, "r") as f:
+        md_content = f.read()
+
+    chunk_list = markdown_split_by_title(md_content)
+    for chunk in chunk_list:
+        rprint(chunk)
