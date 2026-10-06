@@ -8,11 +8,13 @@ from utils.logging_utils import logger
 
 @step_log(desc="验证并获取数据")
 def step_1_validate_and_get_data(state):
-    md_path = state.get("md_path")
-    if (not md_path) or (not Path(md_path).is_file()):
+    md_path = state.get("markdown_file_path")
+    md_path = Path(md_path)
+
+    if (not md_path) or (not md_path.is_file()):
         raise ValueError(f"Markdown 文件路径为空或文件不存在 ({md_path})")
 
-    md_content = Path(md_path).read_text(encoding="utf-8")
+    md_content = md_path.read_text(encoding="utf-8")
 
     # 跨系统 md 兼容，所有 \r\n, \r, 统一为 \n
     md_content = md_content.replace("\r\n", "\n").replace("\r", "\n")
@@ -52,7 +54,7 @@ def node_document_split(state: ImportNodeState) -> ImportNodeState:
 
 if __name__ == "__main__":
     start_state = ImportNodeState(
-        md_path=Path("/Users/refone/Coding/shop-assistant/output/markdown-folder/hak180产品安全手册/hak180产品安全手册_fixed.md")
+        markdown_file_path=Path("/Users/refone/Coding/shop-assistant/output/markdown-folder/hak180产品安全手册/hak180产品安全手册_fixed.md")
         # md_path=Path("/Users/refone/Coding/shop-assistant/test/test-data/第一章-初识智能体.md")
         )
     node_document_split(start_state)
