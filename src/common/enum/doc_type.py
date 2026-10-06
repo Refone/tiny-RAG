@@ -1,11 +1,10 @@
 from enum import StrEnum
 from pathlib import Path
 
-
 class DocType(StrEnum):
     UNKNOWN = "<unk>"
     PDF = "pdf"
-    MARKDOWN = "md"
+    MARKDOWN = "markdown"
 
     @classmethod
     def from_filename(cls, filename: str) -> "DocType":
@@ -15,6 +14,12 @@ class DocType(StrEnum):
         ext = Path(filename).suffix.lower().lstrip(".")
         return _EXT_TO_DOC_TYPE.get(ext, DocType.UNKNOWN)
 
+    @staticmethod
+    def to_str(doc_type: "DocType") -> str:
+        """
+        将 DocType 转换为字符串表示。
+        """
+        return doc_type.value
 
 # 文件后缀 -> DocType 映射
 _EXT_TO_DOC_TYPE = {
