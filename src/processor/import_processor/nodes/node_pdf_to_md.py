@@ -25,6 +25,7 @@ def step_1_validate_and_setup(state: ImportNodeState) -> tuple[Path, int, str]:
     origin = state.get("origin_file_path")
     if not origin:
         raise ValueError(f"origin_file_path 为空: {origin!r}")
+    file_title = Path(origin).stem
 
     pdf_path = Path(origin)
     if not pdf_path.is_file():
@@ -34,12 +35,9 @@ def step_1_validate_and_setup(state: ImportNodeState) -> tuple[Path, int, str]:
         if f.read(len(_PDF_MAGIC)) != _PDF_MAGIC:
             raise ValueError(f"文件不是 PDF 格式: {pdf_path}")
 
+    file_title = state.get("file_title")
     if not state.get("file_title"):
-        logger.warning(f"file_title 为空, 使用 PDF 文件名作为标题: {pdf_path.stem}")
-        file_title = pdf_path.stem
-        state.set("file_title", file_title)
-    else:
-        file_title = state.get("file_title")
+        raise ValueError(f"file_title 为空: {state!r}")
 
     logger.info(f"PDF 校验通过: {pdf_path}")
     return pdf_path, pdf_page_cnt(pdf_path), file_title
@@ -225,7 +223,9 @@ if __name__ == "__main__":
     next_state = node_pdf_to_md(prev_state)
     rprint(next_state)
 
-    save_state(next_state, str(PROJECT_ROOT / "output/tmp/import_02_pdf_to_md.json"))
+    new_state_json = str(PROJECT_ROOT / "output/tmp/import_02_pdf_to_md.json")
+
+    save_state(next_state, new_state_json)
     logger.info(f"PDF to Markdown 处理完成")
-    logger.info(f"状态保存路径: {PROJECT_ROOT / 'output/tmp/import_02_pdf_to_md.json'}")
+    logger.info(f"状态保存路径: {new_state_json}")
     logger.info(f"文件输出路径: {next_state['markdown_file_path']}")
