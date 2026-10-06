@@ -58,10 +58,22 @@ python src/utils/markdown_splitter.py
 Markdown 渲染用 CDN 上的 `marked`;取不到 CDN 时会退化成等宽纯文本,
 其余功能不受影响。
 
+## 左侧长度条
+
+载入数据后,左侧会出现一条 chunk 长度图:
+
+- 每个 chunk 一根 bar,从上到下按顺序排列,**左对齐、向右延长**,长度 = 该 chunk 字符数 / 最长 chunk;
+- 滚动页面时,视口顶部的那个 chunk 对应的 bar 会**高亮**(merge 视图按长度占比估算);
+- **鼠标悬停** bar 显示该 chunk 的字符数;
+- **点击** bar 平滑滚动到对应 chunk(`split` / `meta` 精确跳转,`merge` 按长度占比跳转);
+- 高亮的 bar 滚出视野时,左侧条会自动把它带回可视区。
+
+窄屏(`≤720px`)下长度条隐藏,优先保证正文可读。
+
 ## 文件
 
-- `index.html` — 顶栏(文件名 / 宽度滑杆 / 视图切换 / 打开 JSON)、预览容器、拖拽提示层。
-- `app.js` — 拖拽与文件读取、显示宽度、三种视图渲染。无任何网络请求。
-- `styles.css` — 布局、内容列宽度、投放区与卡片 / JSON / Markdown 排版。
+- `index.html` — 顶栏(文件名 / 宽度滑杆 / 视图切换 / 打开 JSON)、左侧长度条、预览容器、拖拽提示层。
+- `app.js` — 拖拽与文件读取、显示宽度、三种视图渲染、左侧长度条。无任何网络请求。
+- `styles.css` — 布局、内容列宽度、长度条、投放区与卡片 / JSON / Markdown 排版。
 - `../../src/utils/markdown_splitter.py` — 真正的切分逻辑,由命令行运行,
   负责生成 `tmp/chunks.json`。

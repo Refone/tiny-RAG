@@ -244,6 +244,86 @@ main {
   padding: 22px 28px 60px;
 }
 
+/* ===================== 左侧 chunk 长度条 ===================== */
+.chunk-rail {
+  flex: 0 0 auto;
+  width: 118px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px 12px 40px 14px;
+  background: var(--panel-2);
+  border-right: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+
+/* 用 class 控制显示, 否则 display:flex 会盖掉 [hidden] 的 UA 样式 */
+.chunk-rail[hidden] { display: none; }
+
+.rail-caption {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-bottom: 6px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #a3a8b0;
+  background: var(--panel-2);
+}
+
+.rail-bars {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;   /* 所有 bar 左对齐 */
+  gap: 4px;
+}
+
+/* 单根 bar: 宽度由 JS 按 chunk 长度写成百分比, 向右延长 */
+.rail-bar {
+  display: block;
+  height: 9px;
+  min-width: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: #d3d7dd;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.rail-bar:hover { background: #9aa0a8; }
+
+/* 当前滚动到的 chunk */
+.rail-bar.active {
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-weak);
+}
+
+.rail-bar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 悬停时显示的 chunk size 气泡 (fixed, 不会被 rail 的滚动裁掉) */
+.rail-tip {
+  position: fixed;
+  z-index: 60;
+  padding: 5px 9px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: #fff;
+  background: rgba(31, 35, 40, 0.92);
+  border-radius: 7px;
+  white-space: nowrap;
+  pointer-events: none;      /* 别挡住鼠标, 否则会闪 */
+  transform: translateY(-50%);
+}
+
+.rail-tip[hidden] { display: none; }
+
 /* 所有视图都渲染在这条按 --content-width 限宽并居中的列里 */
 .content-column {
   width: var(--content-width, 50%);
@@ -583,4 +663,7 @@ body.dragging .drop-overlay { display: flex; }
   #widthRange { width: 74px; }
   .preview-scroll { padding: 16px 14px 48px; }
   .chunk-card-body { padding: 12px 14px; }
+  /* 窄屏优先保证正文可读, 长度条让位 */
+  .chunk-rail { display: none; }
+  .rail-tip { display: none; }
 }

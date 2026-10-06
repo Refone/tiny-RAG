@@ -91,10 +91,21 @@
     </header>
 
     <main>
+      <!-- 左侧 chunk 长度条: 每个 chunk 一根, 左对齐向右延长 -->
+      <aside
+        id="chunkRail"
+        class="chunk-rail"
+        aria-label="Chunk 长度分布"
+        hidden
+      ></aside>
+
       <div class="pane preview-pane">
         <div id="preview" class="preview-scroll"></div>
       </div>
     </main>
+
+    <!-- 悬停 bar 时跟随显示的 chunk size 提示 -->
+    <div id="railTip" class="rail-tip" role="tooltip" hidden></div>
 
     <!-- 把文件拖到窗口任意位置时出现 -->
     <div id="dropOverlay" class="drop-overlay" aria-hidden="true">

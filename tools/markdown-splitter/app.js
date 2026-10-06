@@ -14,8 +14,11 @@
  * 三种视图 (数据都来自这份 JSON):
  *   merge  — 按 level / title_stack 把 chunks 重新拼回完整文档
  *   split  — 每个 chunk 一张卡片 + 切分边界
- *   meta   — 原始 JSON
+ *   meta   — 原始 JSON, 每个元素一张代码卡片
  * 重新生成数据后再拖一次文件即可刷新。
+ *
+ * 左侧还有一条 chunk 长度条: 一根 bar 对应一个 chunk, 滚动时高亮当前 chunk,
+ * 悬停显示大小, 点击跳到对应位置。
  */
 
 /* ======================= DOM refs ======================= */
@@ -23,6 +26,8 @@ const $ = (sel) => document.querySelector(sel);
 
 const modeSwitch = $('#modeSwitch');
 const preview = $('#preview');
+const chunkRail = $('#chunkRail');
+const railTip = $('#railTip');
 const srcPath = $('#srcPath');
 const srcMeta = $('#srcMeta');
 const openBtn = $('#openBtn');
@@ -122,6 +127,203 @@ function setContent(html) {
   preview.innerHTML = `<div class="content-column">${html}</div>`;
 }
 
+/* ======================= 左侧 chunk 长度条 =======================
+ * 每个 chunk 一根 bar, 从上到下按顺序排列, 左对齐、向右延长,
+ * 长度 = chunk 字符数 / 最长 chunk。
+ *   - 滚动: 视口顶部的那个 chunk 对应的 bar 高亮 (merge 视图按长度占比估算)
+ *   - 悬停: 气泡显示 chunk size
+ *   - 点击: 平滑滚动到该 chunk
+ */
+const RAIL_MIN_RATIO = 0.05;   // 空/极短的 chunk 也留一根看得见的 bar
+const RAIL_TOP_PAD = 34;       // 自动滚动时给 sticky 标题让出的空间
+const RAIL_BOTTOM_PAD = 12;
+
+let railSizes = [];            // 每个 chunk 的字符数
+let railTotal = 0;             // 字符数总和 (merge 视图估算用)
+let railRegions = [];          // split / meta: 每个 chunk 的 DOM 区块
+let activeBarIndex = -1;
+let railFrame = 0;
+
+function chunkCharCount(c) {
+  return (c.content || '').length;
+}
+
+function isRailVisible() {
+  return Array.isArray(state.chunks) && state.chunks.length > 0 && !state.error;
+}
+
+function renderRail() {
+  hideTip();
+
+  if (!isRailVisible()) {
+    chunkRail.hidden = true;
+    chunkRail.innerHTML = '';
+    railSizes = [];
+    railRegions = [];
+    activeBarIndex = -1;
+    return;
+  }
+
+  railSizes = state.chunks.map(chunkCharCount);
+  railTotal = railSizes.reduce((a, b) => a + b, 0);
+  const max = railSizes.reduce((m, n) => Math.max(m, n), 0) || 1;
+
+  let html = `<div class="rail-caption">chunk size</div><div class="rail-bars">`;
+  railSizes.forEach((n, i) => {
+    const pct = Math.max(RAIL_MIN_RATIO, n / max) * 100;
+    html += `<button class="rail-bar" type="button" data-index="${i}" aria-label="Chunk ${i + 1}, ${n} chars" style="width:${pct.toFixed(2)}%"></button>`;
+  });
+  html += `</div>`;
+  chunkRail.innerHTML = html;
+  chunkRail.hidden = false;
+
+  // merge 视图没有逐 chunk 的 DOM 区块, 此时用长度占比估算
+  railRegions = Array.from(preview.querySelectorAll('[data-chunk-index]'));
+
+  activeBarIndex = -1;
+  setActiveBar(activeIndexFromScroll());
+}
+
+function railBars() {
+  return chunkRail.querySelectorAll('.rail-bar');
+}
+
+function setActiveBar(index) {
+  if (!railSizes.length) return;
+  const clamped = Number.isFinite(index) ? index : 0;
+  const next = Math.min(railSizes.length - 1, Math.max(0, clamped));
+  if (next === activeBarIndex) return;
+
+  const bars = railBars();
+  const prev = bars[activeBarIndex];
+  if (prev) prev.classList.remove('active');
+
+  const bar = bars[next];
+  if (bar) {
+    bar.classList.add('active');
+    ensureBarVisible(bar);
+  }
+  activeBarIndex = next;
+}
+
+// 高亮的 bar 若滚出 rail 视野, 就把它带回来
+function ensureBarVisible(bar) {
+  const railRect = chunkRail.getBoundingClientRect();
+  const r = bar.getBoundingClientRect();
+  if (r.top < railRect.top + RAIL_TOP_PAD) {
+    chunkRail.scrollTop -= railRect.top + RAIL_TOP_PAD - r.top;
+  } else if (r.bottom > railRect.bottom - RAIL_BOTTOM_PAD) {
+    chunkRail.scrollTop += r.bottom - (railRect.bottom - RAIL_BOTTOM_PAD);
+  }
+}
+
+// 当前「阅读线」(视口顶部往下一点) 落在哪个 chunk 上
+function activeIndexFromScroll() {
+  if (!railSizes.length) return 0;
+
+  if (state.mode === 'merge' || !railRegions.length) {
+    // 拼接后的文档长度 ≈ 各 chunk 长度之和, 按比例换算
+    const line = preview.scrollTop;
+    const target = (line / Math.max(1, preview.scrollHeight)) * railTotal;
+    let acc = 0;
+    for (let i = 0; i < railSizes.length; i += 1) {
+      acc += railSizes[i];
+      if (target < acc) return i;
+    }
+    return railSizes.length - 1;
+  }
+
+  const containerTop = preview.getBoundingClientRect().top;
+  let index = Number(railRegions[0].dataset.chunkIndex) || 0;
+  for (const el of railRegions) {
+    if (el.getBoundingClientRect().top <= containerTop + 8) {
+      index = Number(el.dataset.chunkIndex) || 0;
+    } else {
+      break;
+    }
+  }
+  return index;
+}
+
+function updateActiveBar() {
+  if (!railSizes.length) return;
+  setActiveBar(activeIndexFromScroll());
+}
+
+function onPreviewScroll() {
+  hideTip();
+  if (!railSizes.length || railFrame) return;
+  railFrame = requestAnimationFrame(() => {
+    railFrame = 0;
+    updateActiveBar();
+  });
+}
+
+function scrollToChunk(index) {
+  if (!railSizes.length) return;
+  hideTip();
+
+  if (state.mode === 'merge' || !railRegions.length) {
+    const before = railSizes.slice(0, index).reduce((a, b) => a + b, 0);
+    const top = (before / Math.max(1, railTotal)) * preview.scrollHeight - 12;
+    preview.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    return;
+  }
+
+  const el = preview.querySelector(`[data-chunk-index="${index}"]`);
+  if (!el) return;
+  const top = el.getBoundingClientRect().top - preview.getBoundingClientRect().top + preview.scrollTop - 12;
+  preview.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
+
+/* ---- 悬停气泡 ---- */
+function showTip(bar) {
+  const index = Number(bar.dataset.index);
+  const n = railSizes[index] || 0;
+  railTip.textContent = `Chunk ${index + 1} · ${n.toLocaleString('zh-CN')} chars`;
+  railTip.hidden = false;
+
+  const r = bar.getBoundingClientRect();
+  const tip = railTip.getBoundingClientRect();
+  let left = r.right + 10;
+  if (left + tip.width > window.innerWidth - 8) {
+    left = Math.max(8, r.left - tip.width - 10);
+  }
+  const half = tip.height / 2;
+  const top = Math.min(Math.max(r.top + r.height / 2, half + 6), window.innerHeight - half - 6);
+  railTip.style.left = `${left}px`;
+  railTip.style.top = `${top}px`;
+}
+
+function hideTip() {
+  railTip.hidden = true;
+}
+
+chunkRail.addEventListener('click', (e) => {
+  const bar = e.target.closest('.rail-bar');
+  if (bar) scrollToChunk(Number(bar.dataset.index));
+});
+
+chunkRail.addEventListener('mouseover', (e) => {
+  const bar = e.target.closest('.rail-bar');
+  if (bar) showTip(bar);
+});
+
+chunkRail.addEventListener('mouseleave', hideTip);
+chunkRail.addEventListener('mouseout', (e) => {
+  const to = e.relatedTarget;
+  if (!to || typeof to.closest !== 'function' || !to.closest('.rail-bar')) hideTip();
+});
+chunkRail.addEventListener('scroll', hideTip, { passive: true });
+chunkRail.addEventListener('focusin', (e) => {
+  const bar = e.target.closest('.rail-bar');
+  if (bar) showTip(bar);
+});
+chunkRail.addEventListener('focusout', hideTip);
+
+preview.addEventListener('scroll', onPreviewScroll, { passive: true });
+window.addEventListener('resize', hideTip);
+
 /* ======================= Segmented switch ======================= */
 function setupSegmented(container, onChange) {
   const thumb = container.querySelector('.seg-thumb');
@@ -218,16 +420,19 @@ function render() {
   document.body.classList.toggle('dragging', state.dragging);
 
   if (state.error) {
+    renderRail();
     renderError();
     return;
   }
 
   if (!state.chunks) {
+    renderRail();
     renderDropzone();
     return;
   }
 
   if (state.chunks.length === 0) {
+    renderRail();
     setContent(`<div class="empty-state">这份 JSON 里没有任何 chunk。</div>`);
     return;
   }
@@ -239,6 +444,9 @@ function render() {
   } else {
     renderMerge();
   }
+
+  // 正文渲染完再建左侧长度条, 这样能直接索引到每个 chunk 的 DOM 区块
+  renderRail();
 }
 
 function renderSplit() {
@@ -249,7 +457,7 @@ function renderSplit() {
     const title = (c.title_stack || []).join(' › ');
     const level = Number.isFinite(c.level) ? c.level : 0;
 
-    html += `<div class="chunk-card">`;
+    html += `<div class="chunk-card" data-chunk-index="${i}">`;
     html += `<div class="chunk-card-head">`;
     html += `<span class="chunk-badge">Chunk ${i + 1}</span>`;
     if (title) html += `<span class="chunk-title-stack" title="${escapeHtml(title)}">${escapeHtml(title)}</span>`;
@@ -336,7 +544,7 @@ function renderMeta() {
     const itemJson = JSON.stringify(c, null, 2);
     const chars = (c.content || '').length;
     const bytes = byteLength(itemJson);
-    html += `<div class="meta-card">`;
+    html += `<div class="meta-card" data-chunk-index="${i}">`;
     html += `<div class="meta-card-head">`;
     html += `<span class="chunk-badge">Chunk ${i + 1}</span>`;
     if (title) html += `<span class="chunk-title-stack" title="${escapeHtml(title)}">${escapeHtml(title)}</span>`;
