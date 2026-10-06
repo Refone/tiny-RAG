@@ -12,9 +12,9 @@
  *      把 tmp/chunks.json 拖进窗口 —— 或者点右上角「打开 JSON」选择文件。
  *
  * 三种视图 (数据都来自这份 JSON):
- *   split — 每个 chunk 一张卡片 + 切分边界
- *   doc   — 按 level / title_stack 把 chunks 重新拼成一篇文档
- *   meta  — 原始 JSON
+ *   merge  — 按 level / title_stack 把 chunks 重新拼回完整文档
+ *   split  — 每个 chunk 一张卡片 + 切分边界
+ *   meta   — 原始 JSON
  * 重新生成数据后再拖一次文件即可刷新。
  */
 
@@ -23,7 +23,6 @@ const $ = (sel) => document.querySelector(sel);
 
 const modeSwitch = $('#modeSwitch');
 const preview = $('#preview');
-const previewHeader = $('#previewHeader');
 const srcPath = $('#srcPath');
 const srcMeta = $('#srcMeta');
 const openBtn = $('#openBtn');
@@ -40,7 +39,7 @@ const WIDTH_DEFAULT = 50;
 
 /* ======================= State ======================= */
 const state = {
-  mode: 'split',      // 'split' | 'doc' | 'meta'
+  mode: 'merge',      // 'merge' | 'split' | 'meta'
   chunks: null,       // Chunk[] | null
   file: null,         // {name, size} | null
   error: null,
@@ -63,6 +62,15 @@ function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+// 字符串按 UTF-8 编码后的字节数 (中文一个字算 3 字节)
+function byteLength(text) {
+  try {
+    return new Blob([text]).size;
+  } catch {
+    return text.length;
+  }
 }
 
 function clockTime(date) {
@@ -220,23 +228,21 @@ function render() {
   }
 
   if (state.chunks.length === 0) {
-    previewHeader.textContent = 'Empty';
     setContent(`<div class="empty-state">这份 JSON 里没有任何 chunk。</div>`);
     return;
   }
 
   if (state.mode === 'meta') {
     renderMeta();
-  } else if (state.mode === 'doc') {
-    renderDoc();
-  } else {
+  } else if (state.mode === 'split') {
     renderSplit();
+  } else {
+    renderMerge();
   }
 }
 
 function renderSplit() {
   const chunks = state.chunks;
-  previewHeader.textContent = `Chunk cards · ${chunks.length} chunks`;
 
   let html = '';
   chunks.forEach((c, i) => {
@@ -260,7 +266,7 @@ function renderSplit() {
   setContent(html);
 }
 
-// 只用 JSON 里的信息把文档拼回去: 标题取 title_stack 的最后一项
+// 只用 JSON 里的信息把原始文档拼回去: 标题取 title_stack 的最后一项
 function buildDocument(chunks) {
   const parts = [];
   chunks.forEach((c) => {
@@ -273,14 +279,48 @@ function buildDocument(chunks) {
   return parts.join('\n\n');
 }
 
-function renderDoc() {
-  previewHeader.textContent = `Document · rebuilt from ${state.chunks.length} chunks`;
+function renderMerge() {
   const md = buildDocument(state.chunks);
   setContent(`<div class="chunk-card"><div class="chunk-card-body markdown-body">${renderMarkdown(md)}</div></div>`);
 }
 
+// 复制文本并给按钮一个短暂的反馈; 没有 clipboard 权限时退化成 execCommand
+async function copyText(text, btn, idleHtml, doneHtml, failHtml) {
+  let ok = true;
+  try {
+    if (navigator.clipboard && window.isSecureContext !== false) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      ok = legacyCopy(text);
+    }
+  } catch {
+    ok = legacyCopy(text);
+  }
+  btn.innerHTML = ok ? doneHtml : failHtml;
+  setTimeout(() => {
+    btn.innerHTML = idleHtml;
+  }, 1400);
+}
+
+function legacyCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.top = '-1000px';
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch {
+    ok = false;
+  }
+  document.body.removeChild(ta);
+  return ok;
+}
+
 function renderMeta() {
-  previewHeader.textContent = `JSON · ${state.chunks.length} chunks`;
   const json = JSON.stringify(state.chunks, null, 2);
   const label = state.file ? state.file.name : 'chunks.json';
 
@@ -289,27 +329,43 @@ function renderMeta() {
   html += `<span class="meta-count">${state.chunks.length} chunks · ${escapeHtml(label)}</span>`;
   html += `<button id="copyJsonBtn" class="btn primary" type="button"><span class="btn-icon">⧉</span> Copy JSON</button>`;
   html += `</div>`;
-  html += `<pre class="meta-json">${escapeHtml(json)}</pre>`;
+
+  // 每个 chunk 一个代码卡片: 超出显示宽度时换行 (见 .meta-json 的 pre-wrap)
+  state.chunks.forEach((c, i) => {
+    const title = (c.title_stack || []).join(' › ');
+    const itemJson = JSON.stringify(c, null, 2);
+    const chars = (c.content || '').length;
+    const bytes = byteLength(itemJson);
+    html += `<div class="meta-card">`;
+    html += `<div class="meta-card-head">`;
+    html += `<span class="chunk-badge">Chunk ${i + 1}</span>`;
+    if (title) html += `<span class="chunk-title-stack" title="${escapeHtml(title)}">${escapeHtml(title)}</span>`;
+    html += `<span class="chunk-size-note" title="content ${chars} chars · JSON ${formatSize(bytes)}">${chars} chars · ${formatSize(bytes)}</span>`;
+    html += `<button class="meta-copy" type="button" data-index="${i}" title="复制这个元素"><span class="btn-icon">⧉</span></button>`;
+    html += `</div>`;
+    html += `<pre class="meta-json">${escapeHtml(itemJson)}</pre>`;
+    html += `</div>`;
+  });
+
   setContent(html);
 
-  const copyBtn = $('#copyJsonBtn');
-  if (copyBtn) {
-    copyBtn.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(json);
-        copyBtn.innerHTML = '<span class="btn-icon">✓</span> Copied';
-        setTimeout(() => {
-          copyBtn.innerHTML = '<span class="btn-icon">⧉</span> Copy JSON';
-        }, 1400);
-      } catch {
-        copyBtn.innerHTML = '<span class="btn-icon">✗</span> Copy failed';
-      }
-    });
+  const copyAllBtn = $('#copyJsonBtn');
+  if (copyAllBtn) {
+    const idle = '<span class="btn-icon">⧉</span> Copy JSON';
+    copyAllBtn.addEventListener('click', () =>
+      copyText(json, copyAllBtn, idle, '<span class="btn-icon">✓</span> Copied', '<span class="btn-icon">✗</span> Copy failed'));
   }
+
+  preview.querySelectorAll('.meta-copy').forEach((btn) => {
+    const idle = '<span class="btn-icon">⧉</span>';
+    btn.addEventListener('click', () => {
+      const item = state.chunks[Number(btn.dataset.index)];
+      copyText(JSON.stringify(item, null, 2), btn, idle, '<span class="btn-icon">✓</span>', '<span class="btn-icon">✗</span>');
+    });
+  });
 }
 
 function renderDropzone() {
-  previewHeader.textContent = 'No file';
   setContent(`
     <button type="button" class="dropzone">
       <span class="dropzone-icon">⤓</span>
@@ -322,7 +378,6 @@ function renderDropzone() {
 }
 
 function renderError() {
-  previewHeader.textContent = 'Error';
   const name = state.file ? state.file.name : '文件';
 
   setContent(`

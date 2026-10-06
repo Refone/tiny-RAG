@@ -1,74 +1,109 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Markdown Splitter · chunks.json 查看器</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markdown Splitter · chunks.json 查看器</title>
 
-  <!--
+    <!--
     marked (Markdown 渲染)。用 async 加载: 即使 CDN 不可用/很慢也不会阻塞页面,
     页面会先用纯文本渲染, marked 到位后再自动重渲染一次。
   -->
-  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" async
-          onload="window.__onMarkedReady && window.__onMarkedReady()"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"
+      async
+      onload="window.__onMarkedReady && window.__onMarkedReady()"
+    ></script>
 
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark">◫</span>
-      <span class="brand-name">Markdown&nbsp;Splitter</span>
-    </div>
-
-    <div class="source-info">
-      <span class="src-label">file</span>
-      <code id="srcPath">未载入</code>
-      <span id="srcMeta" class="src-meta">拖入 chunks.json</span>
-    </div>
-
-    <div class="controls">
-      <!-- 内容显示宽度: 相对窗口宽度的百分比, 默认 50% -->
-      <div class="width-control" title="内容显示宽度 (相对窗口宽度), 默认 50%">
-        <span class="width-label">width</span>
-        <input id="widthRange" type="range" min="20" max="100" step="1" value="50"
-               aria-label="内容显示宽度百分比" />
-        <button id="widthValue" class="width-value" type="button" title="点击恢复默认 50%">50%</button>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">◫</span>
+        <span class="brand-name">Markdown&nbsp;Splitter</span>
       </div>
 
-      <!-- Display mode: split / doc / meta -->
-      <div class="segmented" id="modeSwitch" role="group" aria-label="Display mode">
-        <div class="seg-thumb"></div>
-        <button class="seg-btn active" data-value="split" type="button">split</button>
-        <button class="seg-btn" data-value="doc" type="button">doc</button>
-        <button class="seg-btn" data-value="meta" type="button">meta</button>
+      <div class="source-info">
+        <span class="src-label">file</span>
+        <code id="srcPath">未载入</code>
+        <span id="srcMeta" class="src-meta">拖入 chunks.json</span>
       </div>
 
-      <button id="openBtn" class="btn primary" type="button" title="选择 chunks.json">
-        <span class="btn-icon">⤓</span> 打开 JSON
-      </button>
-      <input id="fileInput" type="file" accept=".json,application/json" hidden />
-    </div>
-  </header>
+      <div class="controls">
+        <!-- 内容显示宽度: 相对窗口宽度的百分比, 默认 50% -->
+        <div
+          class="width-control"
+          title="内容显示宽度 (相对窗口宽度), 默认 50%"
+        >
+          <span class="width-label">width</span>
+          <input
+            id="widthRange"
+            type="range"
+            min="20"
+            max="100"
+            step="1"
+            value="50"
+            aria-label="内容显示宽度百分比"
+          />
+          <button
+            id="widthValue"
+            class="width-value"
+            type="button"
+            title="点击恢复默认 50%"
+          >
+            50%
+          </button>
+        </div>
 
-  <main>
-    <div class="pane preview-pane">
-      <div class="pane-header">
-        <span class="dot accent"></span>
-        <span id="previewHeader">No file</span>
+        <!-- Display mode: merge / split / meta -->
+        <div
+          class="segmented"
+          id="modeSwitch"
+          role="group"
+          aria-label="Display mode"
+        >
+          <div class="seg-thumb"></div>
+          <button class="seg-btn active" data-value="merge" type="button">
+            merge
+          </button>
+          <button class="seg-btn" data-value="split" type="button">
+            split
+          </button>
+          <button class="seg-btn" data-value="meta" type="button">meta</button>
+        </div>
+
+        <button
+          id="openBtn"
+          class="btn primary"
+          type="button"
+          title="选择 chunks.json"
+        >
+          <span class="btn-icon">⤓</span> 打开 JSON
+        </button>
+        <input
+          id="fileInput"
+          type="file"
+          accept=".json,application/json"
+          hidden
+        />
       </div>
-      <div id="preview" class="preview-scroll"></div>
-    </div>
-  </main>
+    </header>
 
-  <!-- 把文件拖到窗口任意位置时出现 -->
-  <div id="dropOverlay" class="drop-overlay" aria-hidden="true">
-    <div class="drop-overlay-inner">
-      <span class="drop-icon">⤓</span>
-      <span>松开鼠标载入 JSON</span>
-    </div>
-  </div>
+    <main>
+      <div class="pane preview-pane">
+        <div id="preview" class="preview-scroll"></div>
+      </div>
+    </main>
 
-  <script src="app.js"></script>
-</body>
+    <!-- 把文件拖到窗口任意位置时出现 -->
+    <div id="dropOverlay" class="drop-overlay" aria-hidden="true">
+      <div class="drop-overlay-inner">
+        <span class="drop-icon">⤓</span>
+        <span>松开鼠标载入 JSON</span>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
 </html>
