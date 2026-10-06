@@ -4,14 +4,14 @@ from functools import lru_cache
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from utils.path_utils import get_project_root
+from utils.path_utils import PROJECT_ROOT
 
 """
     该文件从 .env 文件中读取配置信息
     读取规则:
     TODO
 """
-BASE_DIR = get_project_root()
+BASE_DIR = PROJECT_ROOT
 ENV_FILE = BASE_DIR / ".env"
 
 BASE_CONFIG = {
@@ -37,7 +37,7 @@ class LogSettings(BaseSettings):
     file_enable: bool = False
     file_level: LogLevel = LogLevel.DEBUG
     file_retention: str = "7 days"
-    file_dir: str = str(get_project_root() / "logs")
+    file_dir: str = str(PROJECT_ROOT / "logs")
 
 class MineruSettings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -47,6 +47,10 @@ class MineruSettings(BaseSettings):
 
     base_url: str = "https://mineru.net/api/v4"
     api_key: str = ""
+    est_per_page: float = 0.5
+    timeout_per_page: float = 10
+    poll_interval: float = 3
+    unzip_dir: str = str(PROJECT_ROOT / "output/markdown-folder")
 
 class VLMSettings(BaseSettings):
     model_config = SettingsConfigDict(
