@@ -84,6 +84,7 @@ def markdown_split_by_title(
 def _split_oversized_chunks(
     chunk_list: list[Chunk],
     max_chunk_size: int,
+    min_chunk_size: int,
     overlap_size: int) -> list[Chunk]:
 
     result_chunks: list[Chunk] = []
@@ -93,7 +94,7 @@ def _split_oversized_chunks(
         # 块过长，需要拆分
             config = ChunkConfig(
                 max_chunk_size=max_chunk_size,
-                min_chunk_size=max_chunk_size // 10,
+                min_chunk_size=min_chunk_size,
                 overlap_size=overlap_size,
             )
 
@@ -112,13 +113,14 @@ def _split_oversized_chunks(
 
 def split_markdown(md_content: str,
                    max_chunk_size: int,
+                   min_chunk_size: int,
                    overlap_size: int,
                    ) -> list[Chunk]:
     # 1. 首先按照标题层级切分
     chunk_list = markdown_split_by_title(md_content)
 
     # 2. 超长块继续切分, 同时保持 chunk 顺序不变
-    chunk_list = _split_oversized_chunks(chunk_list, max_chunk_size, overlap_size)
+    chunk_list = _split_oversized_chunks(chunk_list, max_chunk_size, min_chunk_size, overlap_size)
 
     return chunk_list
 
@@ -128,11 +130,17 @@ if __name__ == "__main__":
 
     from rich import print as rprint
     md_content = ""
-    md_path = "test/test-data/第一章-初识智能体.md"
+    md_path = "asset/hello-agent.md"
     with open(md_path, "r") as f:
         md_content = f.read()
 
-    chunk_list = split_markdown(md_content, max_chunk_size=800, overlap_size=50)
+    chunk_list = split_markdown(
+        md_content,
+        max_chunk_size=800,
+        min_chunk_size=80,
+        overlap_size=50,
+        )
+
     for chunk in chunk_list:
         rprint(chunk)
 

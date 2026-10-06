@@ -26,16 +26,19 @@ class ImportNodeState(TypedDict):
     # 文件名 (不含后缀)
     file_title: str
 
+    # 文档切分后的 JSON 文件路径 (node_document_split 产出)
+    chunks_json_path: str
+
     # 文档主体识别结果, 如 "iPhone 13" (node_item_name_recognize 产出)
     item_name: str
 
-
-__default_state: ImportNodeState = {
+_DEFAULT_STATE: ImportNodeState = {
     "task_id": "",
     "origin_file_path": "",
     "markdown_file_path": "",
     "file_title": "",
     "item_name": "",
+    "chunks_json_path": "",
 }
 
 def create_state(**state_dict) -> ImportNodeState:
@@ -43,7 +46,7 @@ def create_state(**state_dict) -> ImportNodeState:
     根据传入字典，创建一个新的导入节点状态
     """
 
-    state = copy.deepcopy(__default_state)
+    state = copy.deepcopy(_DEFAULT_STATE)
     state.update(state_dict)
     return state
 
@@ -53,7 +56,7 @@ def get_default_state() -> ImportNodeState:
     获取默认的导入节点状态
     """
 
-    return copy.deepcopy(__default_state)
+    return copy.deepcopy(_DEFAULT_STATE)
 
 
 def save_state(state: ImportNodeState, file_path: str) -> None:
