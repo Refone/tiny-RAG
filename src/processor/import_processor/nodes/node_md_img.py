@@ -106,7 +106,7 @@ def step_2_scan_images(
     return image_info_list
 
 @step_log(desc="异步并发请求 VLM 获取图像摘要")
-async def step_3_image_summary(
+def step_3_image_summary(
     file_title: str,
     image_info_list: list[ImageInfo],
     ) -> dict[str, str]:
@@ -119,41 +119,52 @@ async def step_3_image_summary(
     Returns:
         dict[str, str]: { "<图片名>" : "描述摘要" }
     """
-    chains = VLM | StrOutputParser()
-    sem = asyncio.Semaphore(APP_CONFIG.vlm_max_concurrent_requests)
+    if not image_info_list:
+        return {}
 
-    # 异步处理单张图片的函数
-    async def process_image(image_info: ImageInfo) -> tuple[str, str]:
-        prompt = load_prompt(
-            prompt_template="image_summary",
-            md_title=file_title,
-            pre_text=image_info["pre_text"],
-            post_text=image_info["post_text"],
+    max_concurrent = APP_CONFIG.vlm_max_concurrent_requests
+    vlm_request_timeout = APP_CONFIG.vlm_request_timeout
+    max_retry_attempts = APP_CONFIG.vlm_request_retry_attempts
+    if max_concurrent <= 0:
+        raise ValueError("vlm_max_concurrent_requests 必须大于 0")
+
+    async def process_all() -> dict[str, str]:
+        semaphore = asyncio.Semaphore(max_concurrent)
+        chains = (VLM | StrOutputParser())\
+            .with_retry(stop_after_attempt=max_retry_attempts)
+
+        async def process_image(image_info: ImageInfo) -> tuple[str, str]:
+            async def invoke() -> tuple[str, str]:
+                async with semaphore:
+                    image_path = image_info["path"]
+                    prompt = load_prompt(
+                        prompt_template="image_summary",
+                        md_title=file_title,
+                        pre_text=image_info["pre_text"],
+                        post_text=image_info["post_text"],
+                    )
+                    image_data = await asyncio.to_thread(encode_image, image_path)
+                    message = HumanMessage(
+                        content=[
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": image_data}},
+                        ]
+                    )
+
+                    logger.debug(f"请求 VLM 获取图片摘要: {image_path}")
+                    await RATE_LIMITER.acquire()
+                    description = await chains.ainvoke([message])
+                    logger.debug(f"{image_path} 图片摘要: {description}")
+                    return image_info["name"], description
+
+            return await asyncio.wait_for(invoke(), timeout=vlm_request_timeout)
+
+        results = await asyncio.gather(
+            *(process_image(image_info) for image_info in image_info_list)
         )
+        return dict(results)
 
-        image_path = image_info["path"]
-
-        message = HumanMessage(
-            content=[
-                {"type" : "text", "text" : prompt },
-                {
-                    "type" : "image_url",
-                    "image_url": {"url": encode_image(image_path)},
-                }
-            ]
-        )
-
-        async with sem:
-            await RATE_LIMITER.acquire()  # 限速
-            result = image_info["name"], await chains.ainvoke([message])
-            logger.debug(f"{image_path} 图片摘要: {result[1]}")
-            return result
-
-    # 并发处理所有图片
-    futures = [process_image(image_info) for image_info in image_info_list]
-    results = await asyncio.gather(*futures)
-
-    return dict(results)
+    return asyncio.run(process_all())
 
 @step_log("图片上传 Minio")
 def step_4_upload_images_get_url(
@@ -257,7 +268,7 @@ def node_md_img(state: ImportNodeState) -> ImportNodeState:
 
     # 3. 请求 VLM 获取图片摘要
     # {"<图片名>" : "<摘要>"}
-    summary_dict = asyncio.run(step_3_image_summary(file_title, image_info_list))
+    summary_dict = step_3_image_summary(file_title, image_info_list)
 
     # 4. 上传图片至 MinIO 并获取 URL
     # {"<图片名>" : "<URL>"}

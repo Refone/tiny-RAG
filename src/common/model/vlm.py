@@ -49,7 +49,7 @@ def encode_image(image_path: str) -> str:
         with open(image_path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode("utf-8")
 
-        return f"data:image/{guess_type(image_path)[0]};base64,{b64}"
+        return f"data:{guess_type(image_path)[0]};base64,{b64}"
 
 if __name__ == '__main__':
     from langchain_core.messages import HumanMessage

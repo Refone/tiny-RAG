@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Final, List
+import os
+from typing import Final
 
 @dataclass(frozen=True)
 class _AppConfig:
@@ -17,6 +18,16 @@ class _AppConfig:
     md_image_surrounding_context_max_chars: int = 500
 
     # 调用 VLM 获取图像摘要时的最大并发数
-    vlm_max_concurrent_requests: int = 16
+    vlm_max_concurrent_requests: int = os.cpu_count() - 1
+    # VLM 请求超时时间 (秒)
+    vlm_request_timeout: int = 30
+    # VLM 请求重试次数
+    vlm_request_retry_attempts: int = 3
+
+    # 切分 Markdown 内容时的配置（软限制）
+    max_chunk_size: int = 1000
+    min_chunk_size: int = 200
+    overlap_size: int = 100
+
 
 APP_CONFIG: Final[_AppConfig] = _AppConfig()
