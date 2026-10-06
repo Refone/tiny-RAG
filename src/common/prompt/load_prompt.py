@@ -10,7 +10,7 @@ def load_prompt(prompt_template: str, **kwargs) -> str:
         拼装好的提示词
     """
     prompt_path = PROJECT_ROOT / f"src/common/prompt/{prompt_template}.prompt"
-    print(prompt_path)
+
     if not prompt_path.exists():
         raise FileNotFoundError(f"Prompt file {prompt_path} not found")
 

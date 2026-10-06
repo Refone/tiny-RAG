@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 import re
 from typing import TypedDict
@@ -41,7 +42,7 @@ def node_md_img(state: ImportNodeState) -> ImportNodeState:
 
     image_info_list = step_2_scan_images(state)
 
-    summary_dict = step_3_image_summary(state, image_info_list)
+    summary_dict = asyncio.run(step_3_image_summary(state, image_info_list))
 
     url_dict = step_4_upload_images_get_url(state, image_info_list)
 
@@ -120,7 +121,7 @@ def step_2_scan_images(state: ImportNodeState) -> list[ImageInfo]:
     return image_info_list
 
 @step_log(desc="调用 VLM 获取图像摘要")
-def step_3_image_summary(state: ImportNodeState, image_info_list: list[ImageInfo]) -> dict[str, str]:
+async def step_3_image_summary(state: ImportNodeState, image_info_list: list[ImageInfo]) -> dict[str, str]:
     """
     调用 VLM 获取图像摘要
     Args:
@@ -129,9 +130,12 @@ def step_3_image_summary(state: ImportNodeState, image_info_list: list[ImageInfo
     Returns:
         dict[str, str]: { "<图片名>" : "描述摘要" }
     """
+    chains = VLM | StrOutputParser()
+    sem = asyncio.Semaphore(APP_CONFIG.vlm_max_concurrent_requests)
     summary_dict: dict[str, str] = {}
 
-    for image_info in image_info_list:
+    # 异步处理单张图片的函数
+    async def process_image(image_info: ImageInfo):
         prompt = load_prompt(
             prompt_template="image_summary",
             md_title=state.get("file_title"),
@@ -151,14 +155,15 @@ def step_3_image_summary(state: ImportNodeState, image_info_list: list[ImageInfo
             ]
         )
 
-        chains = VLM | StrOutputParser()
-        RATE_LIMITER.acquire()  # 限速
-        image_summary = chains.invoke([message])
+        async with sem:
+            await RATE_LIMITER.acquire()  # 限速
+            result = image_info['name'], await chains.ainvoke([message])
+            logger.debug(f"{image_path} 图片摘要: {result[1]}")
+            return result
 
-        summary_dict[image_info['name']] = image_summary
-        logger.debug(f"{image_path} 图片摘要: {image_summary}")
-
-    return summary_dict
+    # 并发处理所有图片
+    results = await asyncio.gather(*(process_image(image_info) for image_info in image_info_list))
+    return dict(results)
 
 @step_log("图片上传 Minio")
 def step_4_upload_images_get_url(state: ImportNodeState, image_info_list: list[ImageInfo]) -> dict[str, str]:
