@@ -20,7 +20,7 @@ class _AppConfig:
     # 调用 VLM 获取图像摘要时的最大并发数
     vlm_max_concurrent_requests: int = os.cpu_count() - 1
     # VLM 请求超时时间 (秒)
-    vlm_request_timeout: int = 30
+    vlm_request_timeout: int = 60
     # VLM 请求重试次数
     vlm_request_retry_attempts: int = 3
 
