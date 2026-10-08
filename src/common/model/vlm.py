@@ -4,18 +4,30 @@ from mimetypes import guess_type
 import os
 
 from langchain.messages import HumanMessage
-from langchain_openai import ChatOpenAI
+from langchain.chat_models import init_chat_model
 
 from common.config.env_config import ENV_CONFIG
-from common.model.rate_limiter import AsyncSlidingWindowRateLimiter
+from common.config.app_config import APP_CONFIG
+from common.model.rate_limiter import SlidingWindowRateLimiter
 
-VLM_RATE_LIMITER = AsyncSlidingWindowRateLimiter(ENV_CONFIG.vlm.rpm)
+class _Qwen_VL_32B:
+    def __init__(self):
+        self._rate_limiter = SlidingWindowRateLimiter(ENV_CONFIG.vlm.rpm)
+        self._model = init_chat_model(
+            model_provider="openai",
+            model=ENV_CONFIG.vlm.model_name,
+            base_url=ENV_CONFIG.vlm.base_url,
+            api_key=ENV_CONFIG.vlm.api_key,
+        ).with_retry(
+            wait_exponential_jitter=True,   # 指数退避 + 抖动
+            stop_after_attempt=APP_CONFIG.vlm_request_retry_attempts,   # 最多尝试 3 次
+        )
 
-VLM = ChatOpenAI(
-    model=ENV_CONFIG.vlm.model_name,
-    base_url=ENV_CONFIG.vlm.base_url,
-    api_key=ENV_CONFIG.vlm.api_key,
-)
+    async def ainvoke(self, *args, **kwargs):
+        await self._rate_limiter.aacquire()
+        return await self._model.ainvoke(*args, **kwargs)
+
+VLM = _Qwen_VL_32B()
 
 def encode_image(image_path: str) -> str:
         """把本地图片编码成 Data URL"""
@@ -26,12 +38,13 @@ def encode_image(image_path: str) -> str:
 
 if __name__ == '__main__':
     from langchain_core.messages import HumanMessage
+    from utils.path_utils import PROJECT_ROOT
     from rich import print as rprint
 
-    local_image_path = f"{os.getcwd()}/test/test-data/RAG.png"
+    local_image_path = str(PROJECT_ROOT / "asset/RAG.png")
     remote_image_url = "https://pics3.baidu.com/feed/f31fbe096b63f624208f2298bc4e78e91b4ca372.jpeg@f_auto?token=4e343c1319d17140423146fb4bb60b6b"
 
-    response = VLM.invoke([
+    response = asyncio.run(VLM.ainvoke([
         HumanMessage(
             content=[
                 {
@@ -45,6 +58,7 @@ if __name__ == '__main__':
             ]
         )
     ])
+    )
     local_image_desc = response.content
     cost_1 = response.usage_metadata['total_tokens']
     """
@@ -73,20 +87,21 @@ if __name__ == '__main__':
     )
     """
 
-    response = VLM.invoke([
-        HumanMessage(
-            content=[
-                {
-                    "type": "text",
-                    "text": "请帮我概括这张图里是什么，总共 50 字以内，用于文档标注。",
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {"url": remote_image_url},
-                },
-            ]
-        )
-    ])
+    response = asyncio.run(VLM.ainvoke([
+            HumanMessage(
+                content=[
+                    {
+                        "type": "text",
+                        "text": "请帮我概括这张图里是什么，总共 50 字以内，用于文档标注。",
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": remote_image_url},
+                    },
+                ]
+            )
+        ])
+    )
     remote_image_desc = response.content
     cost2 = response.usage_metadata['total_tokens']
 

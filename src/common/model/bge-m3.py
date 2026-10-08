@@ -72,7 +72,6 @@ class _BGE_M3_LLM:
 EMBEDDINGS = _BGE_M3_LLM()
 
 if __name__ == "__main__":
-    import asyncio
     from rich import print as rprint
 
     result = EMBEDDINGS.get_embeddings(

@@ -4,12 +4,11 @@ import re
 from typing import TypedDict
 
 from langchain.messages import HumanMessage
-from langchain_core.output_parsers import StrOutputParser
 
 from common.client.minio_client import get_minio_client
 from common.config.app_config import APP_CONFIG
 from common.config.env_config import ENV_CONFIG
-from common.model.vlm import VLM_RATE_LIMITER, VLM, encode_image
+from common.model.vlm import VLM, encode_image
 from common.prompt.load_prompt import load_prompt
 from processor.import_processor.state import ImportNodeState
 from utils.markdown_utils import extract_surrounding_context, find_image_position
@@ -122,42 +121,28 @@ def step_3_image_summary(
     if not image_info_list:
         return {}
 
-    max_concurrent = APP_CONFIG.max_concurrent_requests
-    vlm_request_timeout = APP_CONFIG.vlm_request_timeout
-    max_retry_attempts = APP_CONFIG.vlm_request_retry_attempts
-    if max_concurrent <= 0:
-        raise ValueError("vlm_max_concurrent_requests 必须大于 0")
-
     async def process_all() -> dict[str, str]:
-        semaphore = asyncio.Semaphore(max_concurrent)
-        chains = (VLM | StrOutputParser())\
-            .with_retry(stop_after_attempt=max_retry_attempts)
-
         async def process_image(image_info: ImageInfo) -> tuple[str, str]:
-            async def invoke() -> tuple[str, str]:
-                async with semaphore:
-                    image_path = image_info["path"]
-                    prompt = load_prompt(
-                        prompt_template="image_summary",
-                        md_title=file_title,
-                        pre_text=image_info["pre_text"],
-                        post_text=image_info["post_text"],
-                    )
-                    image_data = await asyncio.to_thread(encode_image, image_path)
-                    message = HumanMessage(
-                        content=[
-                            {"type": "text", "text": prompt},
-                            {"type": "image_url", "image_url": {"url": image_data}},
-                        ]
-                    )
+            image_path = image_info["path"]
+            prompt = load_prompt(
+                prompt_template="image_summary",
+                md_title=file_title,
+                pre_text=image_info["pre_text"],
+                post_text=image_info["post_text"],
+            )
+            image_data = encode_image(image_path)
+            message = HumanMessage(
+                content=[
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": image_data}},
+                ]
+            )
 
-                    logger.debug(f"请求 VLM 获取图片摘要: {image_path}")
-                    await VLM_RATE_LIMITER.acquire()
-                    description = await chains.ainvoke([message])
-                    logger.debug(f"{image_path} 图片摘要: {description}")
-                    return image_info["name"], description
-
-            return await asyncio.wait_for(invoke(), timeout=vlm_request_timeout)
+            logger.debug(f"请求 VLM 获取图片摘要: {image_path}")
+            description = await VLM.ainvoke([message])
+            description = description.content
+            logger.debug(f"{image_path} 图片摘要: {description}")
+            return image_info["name"], description
 
         results = await asyncio.gather(
             *(process_image(image_info) for image_info in image_info_list)
