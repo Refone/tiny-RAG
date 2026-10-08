@@ -28,6 +28,7 @@ dependencies = [
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
     "pymilvus>=3.0.2",
+    "pymilvus-model>=0.3.4",
     "pymongo>=4.18.1",
     "python-dotenv>=1.2.3",
     "regex>=2026.9.10",

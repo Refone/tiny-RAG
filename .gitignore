@@ -11,3 +11,4 @@ output/
 .pytest_cache/
 reports/
 tmp/
+model/*

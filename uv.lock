@@ -3705,6 +3705,22 @@ wheels = [
 ]
 
 [[package]]
+name = "pymilvus-model"
+version = "0.3.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "onnxruntime" },
+    { name = "protobuf" },
+    { name = "scipy" },
+    { name = "transformers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9e/05/6a6de6a98636299b92a5317bd8d1613f7c879d6106e5a335a3678d4bc4be/pymilvus_model-0.3.4.tar.gz", hash = "sha256:d2bf45272ea062a6617ae77db84ab758085ea4100e091f6530561ada80a05eb1", size = 38395, upload-time = "2026-09-23T03:29:26.176Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/81/0a/135a654b3426b06286f793d0711e060b5b547ac0a25b6d9d36b797ddeb04/pymilvus_model-0.3.4-py3-none-any.whl", hash = "sha256:88d1f21b76faa51d4253604c0aa36a0ac3fea66f911cd6e9f11d996709f6dbb4", size = 49033, upload-time = "2026-09-23T03:29:25.265Z" },
+]
+
+[[package]]
 name = "pymongo"
 version = "4.18.1"
 source = { registry = "https://pypi.org/simple" }
@@ -4639,6 +4655,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pymilvus" },
+    { name = "pymilvus-model" },
     { name = "pymongo" },
     { name = "python-dotenv" },
     { name = "regex" },
@@ -4676,6 +4693,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.13.5" },
     { name = "pydantic-settings", specifier = ">=2.15.0" },
     { name = "pymilvus", specifier = ">=3.0.2" },
+    { name = "pymilvus-model", specifier = ">=0.3.4" },
     { name = "pymongo", specifier = ">=4.18.1" },
     { name = "python-dotenv", specifier = ">=1.2.3" },
     { name = "regex", specifier = ">=2026.9.10" },

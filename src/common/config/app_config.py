@@ -17,8 +17,6 @@ class _AppConfig:
     # 解释 Markdown 中图片时, 最大探测前后的字符数
     md_image_surrounding_context_max_chars: int = 500
 
-    # 调用 VLM 获取图像摘要时的最大并发数
-    vlm_max_concurrent_requests: int = os.cpu_count() - 1
     # VLM 请求超时时间 (秒)
     vlm_request_timeout: int = 60
     # VLM 请求重试次数
@@ -29,5 +27,6 @@ class _AppConfig:
     min_chunk_size: int = 200
     overlap_size: int = 100
 
+    max_concurrent_requests: int = os.cpu_count() - 1
 
 APP_CONFIG: Final[_AppConfig] = _AppConfig()

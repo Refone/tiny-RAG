@@ -9,9 +9,9 @@ from langchain_core.output_parsers import StrOutputParser
 from common.client.minio_client import get_minio_client
 from common.config.app_config import APP_CONFIG
 from common.config.env_config import ENV_CONFIG
-from common.model.vlm import RATE_LIMITER, VLM, encode_image
+from common.model.vlm import VLM_RATE_LIMITER, VLM, encode_image
 from common.prompt.load_prompt import load_prompt
-from processor.import_processor.state import ImportNodeState, create_state
+from processor.import_processor.state import ImportNodeState
 from utils.markdown_utils import extract_surrounding_context, find_image_position
 from utils.path_utils import PROJECT_ROOT
 from utils.node_utils import trace_node, step_log
@@ -122,7 +122,7 @@ def step_3_image_summary(
     if not image_info_list:
         return {}
 
-    max_concurrent = APP_CONFIG.vlm_max_concurrent_requests
+    max_concurrent = APP_CONFIG.max_concurrent_requests
     vlm_request_timeout = APP_CONFIG.vlm_request_timeout
     max_retry_attempts = APP_CONFIG.vlm_request_retry_attempts
     if max_concurrent <= 0:
@@ -152,7 +152,7 @@ def step_3_image_summary(
                     )
 
                     logger.debug(f"请求 VLM 获取图片摘要: {image_path}")
-                    await RATE_LIMITER.acquire()
+                    await VLM_RATE_LIMITER.acquire()
                     description = await chains.ainvoke([message])
                     logger.debug(f"{image_path} 图片摘要: {description}")
                     return image_info["name"], description

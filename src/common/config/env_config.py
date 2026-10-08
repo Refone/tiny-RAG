@@ -61,7 +61,7 @@ class VLMSettings(BaseSettings):
     base_url: str = "https://api.siliconflow.cn/v1"
     api_key: str = ""
     model_name: str = "Qwen/Qwen3-VL-32B-Instruct"
-    rpm: int = 1
+    rpm: int = 1000
 
 class MinioSettings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -76,11 +76,23 @@ class MinioSettings(BaseSettings):
     image_dir: str = "upload-images"
     secure: bool = False
 
+class EmbeddingSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        **BASE_CONFIG,
+        env_prefix="EMBEDDING_"
+    )
+
+    base_url: str = "https://api.siliconflow.cn/v1"
+    api_key: str = ""
+    model_local_path: str = "model/bge-m3"
+    rpm: int = 2000
+
 class EnvConfig(BaseSettings):
     log: LogSettings = Field(default_factory=LogSettings)
     mineru: MineruSettings = Field(default_factory=MineruSettings)
     vlm: VLMSettings = Field(default_factory=VLMSettings)
     minio: MinioSettings = Field(default_factory=MinioSettings)
+    embedding: EmbeddingSettings = Field(default_factory=EmbeddingSettings)
 
 ENV_CONFIG = EnvConfig()
 
