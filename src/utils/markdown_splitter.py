@@ -9,7 +9,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 class Chunk(TypedDict):
     content: str
     level: int
-    title_stack: list[str]
+    title_stack: list[str | None]
 
 _TITLE_RE = re.compile(r"^(#{1,6})\s+(.*)$")
 _CODE_RE = re.compile(r'^[ \t]{0,3}(`{3,}|~{3,})')
@@ -20,7 +20,7 @@ def markdown_split_by_title(
     chunk_list = []
 
     md_lines = md_content.splitlines()  # 将内容按行分割
-    current_title:list[str] = []
+    current_title:list[str | None] = []
     current_level = 0
     current_content_lines:list[str] = []
     is_code = False
@@ -43,7 +43,8 @@ def markdown_split_by_title(
             continue
 
         # 判断当前行是正文还是标题
-        if _TITLE_RE.match(line):
+        title_match = _TITLE_RE.match(line)
+        if title_match:
         # 当前行是标题
             if current_content_lines:
                 # 之前 content 中有内容，这是一个新块的开始
@@ -58,10 +59,16 @@ def markdown_split_by_title(
                 if last_content:  # 只有当内容不为空时才加入 chunk_list
                     chunk_list.append(last_chunk)
             # 重置当前的状态
-            current_level = len(_TITLE_RE.match(line).group(1))
+            current_level = len(title_match.group(1))
             current_content_lines.clear()
             # current_content_lines.append(line)  # 把标题本身也加入到当前内容中
-            current_title[max(current_level-1,0):] = [_TITLE_RE.match(line).group(2)]
+            heading_text = title_match.group(2)
+            # title_stack 按下标对齐标题层级: 下标 i 对应第 i+1 级标题。
+            # 缺失的层级用 None 占位，同级标题替换而不是追加，深于当前层级的旧标题要裁掉。
+            while len(current_title) < current_level:
+                current_title.append(None)
+            current_title[current_level - 1] = heading_text
+            del current_title[current_level:]
             continue
 
         else:

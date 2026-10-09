@@ -108,7 +108,7 @@ if __name__ == "__main__":
 
     rprint(next_state)
 
-    new_state_json = str(PROJECT_ROOT / "output/tmp/import_05_item_name_recognize.json")
+    new_state_json = str(PROJECT_ROOT / "output/tmp/import_05_item_name_vect.json")
     save_state(next_state, new_state_json)
     logger.info(f"主体识别完成")
     logger.info(f"状态保存路径: {new_state_json}")

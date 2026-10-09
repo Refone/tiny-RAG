@@ -79,6 +79,8 @@ class EmbeddingSettings(BaseSettings):
     model: str = "text-embedding-v4"
     rpm: int = 1000
     dense_dimension: int = 1024
+    concurrency: int = 8
+    batch_size: int = 10
 
 
 class MilvusSettings(BaseSettings):
@@ -86,6 +88,7 @@ class MilvusSettings(BaseSettings):
 
     endpoint: str = "127.0.0.1:19530"
     collection_item_name: str = "kb_item_name"
+    collection_chunks: str = "kb_chunks"
 
 
 class LargeLanguageModelSettings(BaseSettings):

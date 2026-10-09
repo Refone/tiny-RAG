@@ -57,8 +57,8 @@ if __name__ == "__main__":
     print(import_processor.get_graph().draw_ascii())
 
     task_id = "import-pdf-test"
-    origin_file_path = PROJECT_ROOT / "asset/hak180产品安全手册.pdf"
-    # origin_file_path = PROJECT_ROOT / "asset/万用表RS-12的使用.pdf"
+    # origin_file_path = PROJECT_ROOT / "asset/hak180产品安全手册.pdf"
+    origin_file_path = PROJECT_ROOT / "asset/万用表RS-12的使用.pdf"
 
     task_utils.clear_task(task_id)
     initial_state = create_state(

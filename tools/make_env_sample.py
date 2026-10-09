@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """把 .env 复制为 .env.sample，敏感值等长替换为 *（保留 sk- 之类前缀）"""
+
 import re
 from pathlib import Path
 
@@ -46,7 +47,7 @@ def mask(raw: str) -> str:
     # 保留无信息量的前缀（如 sk-），其余等长打码
     m = PREFIX.match(val)
     prefix = m.group(1) if m else ""
-    body = val[len(prefix):]
+    body = val[len(prefix) :]
 
     return f"{quote}{prefix}{'*' * len(body)}{quote}{comment}"
 
@@ -58,8 +59,10 @@ def convert(text: str) -> str:
     for line in lines:
         m = LINE.match(line)
         if m and m.group("val").strip() and SENSITIVE.search(m.group("key")):
-            line = (f"{m.group('pre')}{m.group('key')}"
-                    f"{m.group('sep')}{mask(m.group('val'))}")
+            line = (
+                f"{m.group('pre')}{m.group('key')}"
+                f"{m.group('sep')}{mask(m.group('val'))}"
+            )
             n += 1
         out.append(line)
     print(f"✅ 已生成 {DST}（脱敏 {n} 处）")
