@@ -5,10 +5,11 @@ from typing import TypedDict
 
 from langchain.messages import HumanMessage
 
-from common.client.minio_client import get_minio_client
+from common.client import MINIO_CLIENT
 from common.config.app_config import APP_CONFIG
 from common.config.env_config import ENV_CONFIG
-from common.model.vlm import VLM, encode_image
+from common.model import VLM
+from common.model.vlm import encode_image
 from common.prompt.load_prompt import load_prompt
 from processor.import_processor.state import ImportNodeState
 from utils.markdown_utils import extract_surrounding_context, find_image_position
@@ -18,10 +19,12 @@ from utils.logging_utils import logger
 
 _MD_FIXED_SUFFIX = "_fixed"
 
+
 class ImageInfo(TypedDict):
     """
     Markdown 中一张图片的相关信息
     """
+
     # 图片名称
     name: str
     # 图片文件路径
@@ -32,6 +35,7 @@ class ImageInfo(TypedDict):
     # 图片描述前后的文字内容
     pre_text: str
     post_text: str
+
 
 @step_log(desc="检验文件并加载")
 def step_1_validate_and_load_data(state: ImportNodeState) -> tuple[Path, str, str]:
@@ -58,7 +62,7 @@ def step_1_validate_and_load_data(state: ImportNodeState) -> tuple[Path, str, st
 def step_2_scan_images(
     md_path: Path,
     md_content: str,
-    ) -> list[ImageInfo]:
+) -> list[ImageInfo]:
 
     image_info_list = []
 
@@ -104,11 +108,12 @@ def step_2_scan_images(
         )
     return image_info_list
 
+
 @step_log(desc="异步并发请求 VLM 获取图像摘要")
 def step_3_image_summary(
     file_title: str,
     image_info_list: list[ImageInfo],
-    ) -> dict[str, str]:
+) -> dict[str, str]:
     """
     请求 VLM 获取图像摘要
 
@@ -151,11 +156,12 @@ def step_3_image_summary(
 
     return asyncio.run(process_all())
 
+
 @step_log("图片上传 Minio")
 def step_4_upload_images_get_url(
     file_title: str,
     image_info_list: list[ImageInfo],
-    ) -> dict[str, str]:
+) -> dict[str, str]:
     """
     上传图片至 Minio
 
@@ -167,21 +173,19 @@ def step_4_upload_images_get_url(
     """
 
     image_url_dict = {}
-    minio_client = get_minio_client()
+
     prefix = ENV_CONFIG.minio.image_dir + "/" + file_title
 
     # 查询 MinIO 中是否已经存在同名文件夹, 若存在, 直接删除(同名则覆盖原则)
-    del_cnt = minio_client.clear_dir_if_exist(prefix)
+    del_cnt = MINIO_CLIENT.clear_dir_if_exist(prefix)
     if del_cnt > 0:
         logger.info(f"{prefix} 覆盖删除 {del_cnt} 张图片")
 
     # 依次上传图片
     for image in image_info_list:
         try:
-            url = minio_client.upload_file(
-                prefix=prefix,
-                as_name=image["name"],
-                file_path=image["path"]
+            url = MINIO_CLIENT.upload_file(
+                prefix=prefix, as_name=image["name"], file_path=image["path"]
             )
             image_url_dict[image["name"]] = url
             logger.debug(f"{image['name']} 上传成功: {url}")
@@ -190,12 +194,13 @@ def step_4_upload_images_get_url(
 
     return image_url_dict
 
+
 @step_log("替换 markdown 中的图片标记")
 def step_5_md_content_image_replace(
     md_content: str,
     image_summary_dict: dict[str, str],
     image_url_dict: dict[str, str],
-    ) -> str:
+) -> str:
     """
     对 md 文件图片标记进行替换      ![](本地路径) -> ![摘要](网络地址)
 
@@ -220,6 +225,7 @@ def step_5_md_content_image_replace(
 
     return fixed_content
 
+
 @step_log("保存修改后的 markdown")
 def step_6_new_content_to_disk(md_path: Path, md_content: str) -> Path:
     """
@@ -238,6 +244,7 @@ def step_6_new_content_to_disk(md_path: Path, md_content: str) -> Path:
     logger.info(f"图片标注修正后的内容已写入 {str(fixed_md_path)}")
 
     return fixed_md_path
+
 
 @trace_node(desc="Markdown 内联图片语法处理")
 def node_md_img(state: ImportNodeState) -> ImportNodeState:
@@ -261,7 +268,9 @@ def node_md_img(state: ImportNodeState) -> ImportNodeState:
 
     # 5. 替换 Markdown 中的内联图片
     # ![](local_url) -> ![abstract](minio_url)
-    fixed_md_content = step_5_md_content_image_replace(md_content, summary_dict, url_dict)
+    fixed_md_content = step_5_md_content_image_replace(
+        md_content, summary_dict, url_dict
+    )
 
     # 6. 将新的 Markdown 内容写入磁盘
     fixed_md_path = step_6_new_content_to_disk(md_path, fixed_md_content)
@@ -269,6 +278,7 @@ def node_md_img(state: ImportNodeState) -> ImportNodeState:
     state["markdown_file_path"] = str(fixed_md_path)
 
     return state
+
 
 if __name__ == "__main__":
     from rich import print as rprint

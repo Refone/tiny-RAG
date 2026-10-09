@@ -17,6 +17,7 @@ LOG_DIR = Path(ENV_CONFIG.log.file_dir)
 LOG_FILE_NAME = "app_{time:YYYYMMDD}.log"
 LOG_FILE_PATH = LOG_DIR / LOG_FILE_NAME
 
+
 def _can_write_log_dir() -> bool:
     """实际在日志目录写入一个临时文件, 判断是否可写。
 
@@ -46,7 +47,7 @@ def init_logger():
             format=LOG_FORMAT,
             colorize=True,
             backtrace=False,
-            enqueue=True,   # 异步写日志, 可能被同步 print “后来居上”
+            enqueue=True,  # 异步写日志, 可能被同步 print “后来居上”
         )
 
     if ENV_CONFIG.log.file_enable:
@@ -61,7 +62,7 @@ def init_logger():
                 enqueue=True,
                 backtrace=True,
                 diagnose=True,
-                delay=True,          # 第一条日志才建文件
+                delay=True,  # 第一条日志才建文件
             )
         else:
             # 注意: 上面已经 _logger.remove() 清空全部 sink, 若 console_enable=False
@@ -71,7 +72,9 @@ def init_logger():
 
     return _logger
 
+
 base_logger = init_logger()
+
 
 def fix_log_position(record):
     """
@@ -108,15 +111,48 @@ def fix_log_position(record):
         record.update(
             file=frame.filename.split("/")[-1].split("\\")[-1],
             function=frame.function,
-            line=frame.lineno
+            line=frame.lineno,
         )
         break
 
 
 logger = base_logger.patch(fix_log_position)
 
-if __name__ == '__main__':
+
+def brief_list(lst: list, head: int = 3, tail: int = 3) -> str:
+    if not lst:
+        return "[]"
+    if len(lst) <= head + tail:
+        return str(lst)
+    return (
+        f"[{', '.join(map(str, lst[:head]))}, ..., {', '.join(map(str, lst[-tail:]))}]"
+    )
+
+
+def brief_dict(d: dict, head: int = 3, tail: int = 3) -> str:
+    if not d:
+        return "{}"
+    items = list(d.items())
+    if len(items) <= head + tail:
+        return str(d)
+    return (
+        f"{{{', '.join(f'{k}: {v}' for k, v in items[:head])}, ..., "
+        f"{', '.join(f'{k}: {v}' for k, v in items[-tail:])}}}"
+    )
+
+
+if __name__ == "__main__":
     logger.debug("这是一条 DEBUG 信息")
     logger.info("这是一条 INFO 信息")
     logger.warning("这是一条 WARN 信息")
     logger.error("这是一条 ERROR 信息")
+    logger.critical("这是一条 CRITICAL 信息")
+    logger.success("这是一条 SUCCESS 信息")
+
+    logger.info("测试 brief_list 函数: {}", brief_list([1, 2, 3, 4, 5, 6, 7, 8, 9]))
+    logger.info("测试 brief_list 函数 (短列表): {}", brief_list([1, 2, 3]))
+
+    logger.info("测试 brief_dict 函数: {}", brief_dict({i: i * i for i in range(10)}))
+    logger.info(
+        "测试 brief_dict 函数 (短字典): {}", brief_dict({i: i * i for i in range(3)})
+    )

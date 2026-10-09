@@ -13,11 +13,13 @@ from pypdf import PdfReader
 # PDF 文件头魔数 (前 5 字节)
 _PDF_MAGIC = b"%PDF-"
 
+
 def pdf_page_cnt(pdf_path: Path) -> int:
     """获取 PDF 的页数"""
     with pdf_path.open("rb") as f:
         reader = PdfReader(f)
         return len(reader.pages)
+
 
 @step_log("校验 PDF 文件")
 def step_1_validate_and_setup(state: ImportNodeState) -> tuple[Path, int, str]:
@@ -41,6 +43,7 @@ def step_1_validate_and_setup(state: ImportNodeState) -> tuple[Path, int, str]:
 
     logger.info(f"PDF 校验通过: {pdf_path}")
     return pdf_path, pdf_page_cnt(pdf_path), file_title
+
 
 @step_log("上传 PDF, 轮询等待转换完成")
 def step_2_upload_and_poll(pdf_path: Path, page_cnt: int) -> str:
@@ -83,7 +86,9 @@ def step_2_upload_and_poll(pdf_path: Path, page_cnt: int) -> str:
 
     apply_resp_data = apply_resp.json()
     if apply_resp_data["code"] != 0:
-        raise requests.RequestException(f"HTTP 请求成功, 但业务逻辑失败: {apply_resp_data['msg']}")
+        raise requests.RequestException(
+            f"HTTP 请求成功, 但业务逻辑失败: {apply_resp_data['msg']}"
+        )
 
     # 2. 文件上传
     upload_urls = apply_resp_data["data"]["file_urls"]
@@ -113,10 +118,12 @@ def step_2_upload_and_poll(pdf_path: Path, page_cnt: int) -> str:
     # 轮询间隔时间
     interval_time = ENV_CONFIG.mineru.poll_interval
     # 最大等待时间
-    max_wait_time = ENV_CONFIG.mineru.timeout_per_page * page_cnt
+    max_wait_time = ENV_CONFIG.mineru.timeout_per_page * page_cnt + 30
 
     start = time.time()
-    logger.debug(f"预计等待时间: {est_time}s, 轮询间隔: {interval_time}s, 最大等待时间: {max_wait_time}s")
+    logger.debug(
+        f"预计等待时间: {est_time}s, 轮询间隔: {interval_time}s, 最大等待时间: {max_wait_time}s"
+    )
     time.sleep(max(0, est_time - interval_time))
     while True:
         time.sleep(interval_time)
@@ -143,13 +150,15 @@ def step_2_upload_and_poll(pdf_path: Path, page_cnt: int) -> str:
         if extract_result["state"] == "done":
             zip_url = extract_result["full_zip_url"]
             if not zip_url:
-                raise requests.RequestException(f"MinerU 解析完毕, zip 地址异常: {poll_resp_data['msg']}")
+                raise requests.RequestException(
+                    f"MinerU 解析完毕, zip 地址异常: {poll_resp_data['msg']}"
+                )
             logger.debug(f"MinerU 解析完毕, zip 地址: {zip_url}")
             return zip_url
         elif extract_result["state"] == "failed":
             raise requests.RequestException(f"MinerU 解析失败: {poll_resp_data['msg']}")
         else:
-        # 仍在处理中, 继续轮询
+            # 仍在处理中, 继续轮询
             logger.debug(f"解析未完成, {interval_time}s 后重试")
 
 

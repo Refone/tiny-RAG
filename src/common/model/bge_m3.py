@@ -1,10 +1,8 @@
-
-from scipy.sparse import csr_matrix
-
 from utils.path_utils import PROJECT_ROOT
 from utils.logging_utils import logger
 from common.config.env_config import ENV_CONFIG
 from pymilvus.model.hybrid import BGEM3EmbeddingFunction
+
 
 class _BGE_M3_LLM:
     def __init__(self):
@@ -20,11 +18,15 @@ class _BGE_M3_LLM:
             normalize_embeddings=True,
         )
 
-    def get_embeddings(self, texts: list[str]) -> list[tuple[list[float], dict[int, float]]]:
+    def get_embeddings(
+        self, texts: list[str]
+    ) -> list[tuple[list[float], dict[int, float]]]:
 
-        if not isinstance(texts, list) or \
-            not all(isinstance(t, str) for t in texts) or \
-            not len(texts) > 0:
+        if (
+            not isinstance(texts, list)
+            or not all(isinstance(t, str) for t in texts)
+            or not len(texts) > 0
+        ):
             raise ValueError("参数 texts 必须是包含文本的非空列表")
 
         logger.debug(f"Getting embeddings for texts: {texts}")
@@ -57,29 +59,29 @@ class _BGE_M3_LLM:
         sparse = embeddings["sparse"]
         sparse_dicts = []
         for i in range(len(texts)):
-            indices = sparse.indices[sparse.indptr[i]:sparse.indptr[i+1]].tolist()
-            data = sparse.data[sparse.indptr[i]:sparse.indptr[i+1]].tolist()
+            indices = sparse.indices[sparse.indptr[i] : sparse.indptr[i + 1]].tolist()
+            data = sparse.data[sparse.indptr[i] : sparse.indptr[i + 1]].tolist()
             sparse_dict = dict(zip(indices, data))
             sparse_dicts.append(sparse_dict)
 
         result = {
-            "dense": [ emb.tolist() for emb in embeddings["dense"] ],
+            "dense": [emb.tolist() for emb in embeddings["dense"]],
             "sparse": sparse_dicts,
         }
 
         return result
 
-EMBEDDINGS = _BGE_M3_LLM()
 
 if __name__ == "__main__":
     from rich import print as rprint
 
-    result = EMBEDDINGS.get_embeddings(
-                            [
-                                "Hello, World",
-                                "This is a test",
-                                "this just a test",
-                            ]
-                        )
+    embeddings = _BGE_M3_LLM()
+    result = embeddings.get_embeddings(
+        [
+            "Hello, World",
+            "This is a test",
+            "this just a test",
+        ]
+    )
     print(len(result["dense"]), len(result["dense"][0]))
     rprint(result["sparse"])

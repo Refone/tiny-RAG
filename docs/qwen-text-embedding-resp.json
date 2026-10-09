@@ -1,0 +1,92 @@
+{
+  "status_code": 200,
+  "request_id": "ece67fc2-d8fc-92a8-9096-bc746c02c1a1",
+  "code": "",
+  "message": "",
+  "output": {
+    "embeddings": [
+      {
+        "embedding": [
+          0.055906105786561966,
+          -0.017303017899394035,
+          "...(total 1024 dims)...",
+          0.038813456892967224,
+          0.02598082460463047,
+          0.02152358740568161
+        ],
+        "sparse_embedding": [
+          {
+            "index": 35451,
+            "token": "З",
+            "value": 1.4951
+          },
+          {
+            "index": 6949,
+            "token": "д",
+            "value": 1.6396
+          },
+          {
+            "index": 26988,
+            "token": "рав",
+            "value": 2.0625
+          },
+          {
+            "index": 20200,
+            "token": "ств",
+            "value": 1.1279
+          },
+          {
+            "index": 82580,
+            "token": "уй",
+            "value": 1.0996
+          },
+          {
+            "index": 50527,
+            "token": "те",
+            "value": 1.0557
+          },
+          {
+            "index": 11,
+            "token": ",",
+            "value": 0.3892
+          },
+          {
+            "index": 73712,
+            "token": "товар",
+            "value": 1.9902
+          },
+          {
+            "index": 1802,
+            "token": "и",
+            "value": 0.5825
+          },
+          {
+            "index": 14144,
+            "token": "щ",
+            "value": 1.251
+          }
+        ],
+        "text_index": 0
+      }
+    ]
+  },
+  "usage": {
+    "total_tokens": 11
+  },
+  "headers": {
+    "vary": "Origin,Access-Control-Request-Method,Access-Control-Request-Headers, Accept-Encoding",
+    "content-type": "application/json;charset=utf-8",
+    "x-request-id": "ece67fc2-d8fc-92a8-9096-bc746c02c1a1",
+    "x-dashscope-call-gateway": "true",
+    "x-dashscope-finished": "true",
+    "x-dashscope-timeout": "3600",
+    "req-cost-time": "110",
+    "req-arrive-time": "1791517401220",
+    "resp-start-time": "1791517401330",
+    "x-envoy-upstream-service-time": "97",
+    "content-encoding": "gzip",
+    "date": "Fri, 09 Oct 2026 03:43:21 GMT",
+    "server": "istio-envoy",
+    "transfer-encoding": "chunked"
+  }
+}
