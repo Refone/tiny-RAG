@@ -80,7 +80,7 @@ def step_3_insert_item_name(item_name: str, file_title: str) -> None:
 
 
 @trace_node(desc="主体识别")
-def node_item_name_recognize(state: ImportNodeState) -> ImportNodeState:
+def node_item_name_vect(state: ImportNodeState) -> ImportNodeState:
 
     # 校验以及获取数据
     md_content, file_title = step_1_validate_and_get_data(state)
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     prev_state = load_state(
         str(PROJECT_ROOT / "output/tmp/import_04_document_split.json")
     )
-    next_state = node_item_name_recognize(prev_state)
+    next_state = node_item_name_vect(prev_state)
 
     rprint(next_state)
 

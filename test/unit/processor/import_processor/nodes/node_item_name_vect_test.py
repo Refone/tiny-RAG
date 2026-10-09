@@ -1,7 +1,7 @@
-"""单元测试: src/processor/import_processor/nodes/node_item_name_recognize.py
+"""单元测试: src/processor/import_processor/nodes/node_item_name_vect.py
 
 被测对象:
-    node_item_name_recognize    主体识别节点 (调用 LLM 归纳文档主体)
+    node_item_name_vect    主体识别节点 (调用 LLM 归纳文档主体)
 
 当前状态: 尚未实现, 仅透传 state (见源码 TODO)。
 

@@ -23,7 +23,7 @@ RAG Agent，LangGraph 编排。导入链路已实现，查询链路待实现。
 2. `node_pdf_to_md` ✅ — MinerU 云端转换（依赖 `MINERU_API_KEY`）
 3. `node_md_img` TODO — 图片上传 MinIO + 多模态描述
 4. `node_document_split` TODO — 标题递归切分 + Metadata
-5. `node_item_name_recognize` TODO — LLM 归纳主体
+5. `node_item_name_vect` TODO — LLM 归纳主体
 6. `node_bge_embedding` TODO — BGE-M3 稠密/稀疏向量
 7. `node_upsert_milvus` TODO — 删旧 + 批量插入
 

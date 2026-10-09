@@ -4,6 +4,7 @@ from typing import TypedDict
 
 from utils.path_utils import PROJECT_ROOT
 
+
 class ImportNodeState(TypedDict):
     """
     导入图状态
@@ -29,8 +30,9 @@ class ImportNodeState(TypedDict):
     # 文档切分后的 JSON 文件路径 (node_document_split 产出)
     chunks_json_path: str
 
-    # 文档主体识别结果, 如 "iPhone 13" (node_item_name_recognize 产出)
+    # 文档主体识别结果, 如 "iPhone 13" (node_item_name_vect 产出)
     item_name: str
+
 
 _DEFAULT_STATE: ImportNodeState = {
     "task_id": "",
@@ -40,6 +42,7 @@ _DEFAULT_STATE: ImportNodeState = {
     "item_name": "",
     "chunks_json_path": "",
 }
+
 
 def create_state(**state_dict) -> ImportNodeState:
     """
@@ -67,6 +70,7 @@ def save_state(state: ImportNodeState, file_path: str) -> None:
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=4)
 
+
 def load_state(file_path: str) -> ImportNodeState:
     """
     从指定文件路径加载状态
@@ -76,7 +80,8 @@ def load_state(file_path: str) -> ImportNodeState:
         state = json.load(f)
     return state
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     from rich import print as rprint
 
     state = create_state(

@@ -20,7 +20,7 @@ flowchart TD
         E3(["node_md_img<br/>MinIO 图片处理"])
         E4(["node_document_split<br/>文档切分"])
         E5["Text Chunks"]
-        E6(["node_item_name_recognize<br/>主体识别 · LLM"])
+        E6(["node_item_name_vect<br/>主体识别 · LLM"])
         E7(["node_bge_embedding<br/>BGE-M3 向量化"])
         E8[("Milvus<br/>VectorStore")]
 
@@ -71,7 +71,7 @@ flowchart TD
 2. **`node_pdf_to_md`** — PDF 转 Markdown (仅 PDF 分支): 校验 `%PDF-` 文件头后调 MinerU 云端 API (申请上传地址 → PUT 上传 → 轮询转换结果 → 下载解压 `full.md`), 写入 `markdown_file_path` / `file_title`。✅ 已实现 (依赖 `MINERU_API_KEY`)
 3. **`node_md_img`** — 图片处理: 扫描 Markdown 中的图片链接, 上传 MinIO, (可选) 生成多模态描述, 替换为 MinIO URL。TODO 占位, 当前透传 state
 4. **`node_document_split`** — 文档切分: 按标题层级递归切分, 过长段落二次切分, 产出带 Metadata 的 chunk 列表写入 `chunks`。TODO 占位
-5. **`node_item_name_recognize`** — 主体识别: 取标题等靠前内容, 调 LLM 归纳文档主体 (如 "iPhone 13"), 写入 `item_name` 供后续检索提速。TODO 占位
+5. **`node_item_name_vect`** — 主体识别: 取标题等靠前内容, 调 LLM 归纳文档主体 (如 "iPhone 13"), 写入 `item_name` 供后续检索提速。TODO 占位
 6. **`node_bge_embedding`** — 向量化: 加载 BGE-M3, 为每个 chunk 计算稠密向量 + 稀疏向量, 准备落库。TODO 占位
 7. **`node_upsert_milvus`** — 写入向量库: 连接 Milvus, 按 `item_name` 删除旧数据, 批量插入新向量。TODO 占位
 
@@ -109,7 +109,7 @@ shop-assistant/
 │   │   │       ├── node_pdf_to_md.py           # PDF 转 Markdown, 走 MinerU API ✅
 │   │   │       ├── node_md_img.py              # 图片处理 (上传 MinIO + 生成描述) TODO
 │   │   │       ├── node_document_split.py      # 文档切分 (标题递归切分 + Metadata) TODO
-│   │   │       ├── node_item_name_recognize.py # 主体识别 (LLM 归纳文档主体) TODO
+│   │   │       ├── node_item_name_vect.py # 主体识别 (LLM 归纳文档主体) TODO
 │   │   │       ├── node_bge_embedding.py       # BGE-M3 稠密/稀疏向量化 TODO
 │   │   │       └── node_upsert_milvus.py       # 写入向量库 (删旧 + 批量插) TODO
 │   │   └── query_processor/    # 查询流程: query-向量化-三路召回-生成答案 (空, 待实现)
