@@ -21,7 +21,7 @@ flowchart TD
         E4(["node_document_split<br/>文档切分"])
         E5["Text Chunks"]
         E6(["node_item_name_vect<br/>主体识别 · LLM"])
-        E7(["node_bge_embedding<br/>BGE-M3 向量化"])
+        E7(["node_chunks_vect<br/>BGE-M3 向量化"])
         E8[("Milvus<br/>VectorStore")]
 
         %% ===== 链路2: 查询与检索 (query_processor, 待实现) =====
@@ -72,7 +72,7 @@ flowchart TD
 3. **`node_md_img`** — 图片处理: 扫描 Markdown 中的图片链接, 上传 MinIO, (可选) 生成多模态描述, 替换为 MinIO URL。TODO 占位, 当前透传 state
 4. **`node_document_split`** — 文档切分: 按标题层级递归切分, 过长段落二次切分, 产出带 Metadata 的 chunk 列表写入 `chunks`。TODO 占位
 5. **`node_item_name_vect`** — 主体识别: 取标题等靠前内容, 调 LLM 归纳文档主体 (如 "iPhone 13"), 写入 `item_name` 供后续检索提速。TODO 占位
-6. **`node_bge_embedding`** — 向量化: 加载 BGE-M3, 为每个 chunk 计算稠密向量 + 稀疏向量, 准备落库。TODO 占位
+6. **`node_chunks_vect`** — 向量化: 加载 BGE-M3, 为每个 chunk 计算稠密向量 + 稀疏向量, 准备落库。TODO 占位
 7. **`node_upsert_milvus`** — 写入向量库: 连接 Milvus, 按 `item_name` 删除旧数据, 批量插入新向量。TODO 占位
 
 > 状态字段的「唯一事实来源」是 `import_processor/state.py` 的 `ImportNodeState`; 新增字段必须先在该 TypedDict 与 `__default_state` 中声明, 否则会被 LangGraph 静默丢弃。
@@ -110,7 +110,7 @@ shop-assistant/
 │   │   │       ├── node_md_img.py              # 图片处理 (上传 MinIO + 生成描述) TODO
 │   │   │       ├── node_document_split.py      # 文档切分 (标题递归切分 + Metadata) TODO
 │   │   │       ├── node_item_name_vect.py # 主体识别 (LLM 归纳文档主体) TODO
-│   │   │       ├── node_bge_embedding.py       # BGE-M3 稠密/稀疏向量化 TODO
+│   │   │       ├── node_chunks_vect.py       # BGE-M3 稠密/稀疏向量化 TODO
 │   │   │       └── node_upsert_milvus.py       # 写入向量库 (删旧 + 批量插) TODO
 │   │   └── query_processor/    # 查询流程: query-向量化-三路召回-生成答案 (空, 待实现)
 │   ├── utils/              # 工具逻辑

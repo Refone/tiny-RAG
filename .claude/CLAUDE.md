@@ -24,7 +24,7 @@ RAG Agent，LangGraph 编排。导入链路已实现，查询链路待实现。
 3. `node_md_img` TODO — 图片上传 MinIO + 多模态描述
 4. `node_document_split` TODO — 标题递归切分 + Metadata
 5. `node_item_name_vect` TODO — LLM 归纳主体
-6. `node_bge_embedding` TODO — BGE-M3 稠密/稀疏向量
+6. `node_chunks_vect` TODO — BGE-M3 稠密/稀疏向量
 7. `node_upsert_milvus` TODO — 删旧 + 批量插入
 
 **实现 TODO 节点时**：先更新 `state.py`，再写节点函数，最后在 `nodes/__init__.py` 导出。

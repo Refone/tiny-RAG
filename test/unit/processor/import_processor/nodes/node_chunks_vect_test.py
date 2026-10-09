@@ -1,7 +1,7 @@
-"""单元测试: src/processor/import_processor/nodes/node_bge_embedding.py
+"""单元测试: src/processor/import_processor/nodes/node_chunks_vect.py
 
 被测对象:
-    node_bge_embedding    向量化节点 (BGE-M3 稠密 / 稀疏向量)
+    node_chunks_vect    向量化节点 (BGE-M3 稠密 / 稀疏向量)
 
 当前状态: 尚未实现, 仅透传 state (见源码 TODO)。
 

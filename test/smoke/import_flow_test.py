@@ -3,7 +3,7 @@
 覆盖范围:
     当前导入流程中, 只有 node_entry 与 node_pdf_to_md 有真实实现;
     其余节点 (node_md_img / node_document_split / node_item_name_vect /
-    node_bge_embedding / node_upsert_milvus) 均为 stub, 仅原样透传 state。
+    node_chunks_vect / node_upsert_milvus) 均为 stub, 仅原样透传 state。
 
     本测试「测已有功能 + 验证链路路径」:
     - Markdown: 不依赖外部服务, 全链路 invoke, 校验入口识别的
@@ -41,7 +41,7 @@ MD_CHAIN = [
     "node_md_img",
     "node_document_split",
     "node_item_name_vect",
-    "node_bge_embedding",
+    "node_chunks_vect",
     "node_upsert_milvus",
 ]
 
@@ -51,7 +51,7 @@ PDF_CHAIN = [
     "node_md_img",
     "node_document_split",
     "node_item_name_vect",
-    "node_bge_embedding",
+    "node_chunks_vect",
     "node_upsert_milvus",
 ]
 

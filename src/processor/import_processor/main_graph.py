@@ -2,13 +2,12 @@ from langgraph.constants import END
 from langgraph.graph import StateGraph
 from processor.import_processor.state import ImportNodeState
 from processor.import_processor.nodes import (
-    node_bge_embedding,
+    node_chunks_vect,
     node_document_split,
     node_entry,
     node_item_name_vect,
     node_md_img,
     node_pdf_to_md,
-    node_upsert_milvus,
 )
 
 workflow = StateGraph(ImportNodeState)
@@ -19,8 +18,7 @@ workflow.add_node(node_pdf_to_md)
 workflow.add_node(node_md_img)
 workflow.add_node(node_document_split)
 workflow.add_node(node_item_name_vect)
-workflow.add_node(node_bge_embedding)
-workflow.add_node(node_upsert_milvus)
+workflow.add_node(node_chunks_vect)
 
 
 def file_type_router(state: ImportNodeState):
@@ -44,9 +42,8 @@ workflow.add_conditional_edges(
 workflow.add_edge(node_pdf_to_md.__name__, node_md_img.__name__)
 workflow.add_edge(node_md_img.__name__, node_document_split.__name__)
 workflow.add_edge(node_document_split.__name__, node_item_name_vect.__name__)
-workflow.add_edge(node_item_name_vect.__name__, node_bge_embedding.__name__)
-workflow.add_edge(node_bge_embedding.__name__, node_upsert_milvus.__name__)
-workflow.add_edge(node_upsert_milvus.__name__, END)
+workflow.add_edge(node_item_name_vect.__name__, node_chunks_vect.__name__)
+workflow.add_edge(node_chunks_vect.__name__, END)
 
 import_processor = workflow.compile()
 
