@@ -1,0 +1,64 @@
+# 应用编排: backend (FastAPI) + web (Vite/nginx)。
+# 基础设施 (Milvus / MinIO / MongoDB / Attu) 通过 include 复用 docker/services.yaml,
+# 全部落在同一个名为 milvus 的默认网络里, 后端用服务名即可互通。
+#
+# 若你的 Docker Compose 版本不支持 include (需 >= 2.24), 改用:
+#   docker compose -f docker/services.yaml -f docker-compose.yml up -d
+
+include:
+  - docker/services.yaml
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+    container_name: shop-assistant-backend
+    ports:
+      - "8000:8000"
+    environment:
+      PROJECT_ROOT: /app
+      # 基础设施地址 (服务名来自 docker/services.yaml)
+      MILVUS_ENDPOINT: http://standalone:19530
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-knowlege-hub}
+      # 模型 / 上游密钥: 从宿主 .env 或 shell 环境注入, 不打进镜像
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.siliconflow.cn/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-deepseek-ai/DeepSeek-V4-Flash}
+      VLM_BASE_URL: ${VLM_BASE_URL:-https://api.siliconflow.cn/v1}
+      VLM_API_KEY: ${VLM_API_KEY:-}
+      VLM_MODEL_NAME: ${VLM_MODEL_NAME:-Qwen/Qwen3-VL-32B-Instruct}
+      MINERU_BASE_URL: ${MINERU_BASE_URL:-https://mineru.net/api/v4}
+      MINERU_API_KEY: ${MINERU_API_KEY:-}
+      QWEN_API_KEY: ${QWEN_API_KEY:-}
+      LOG_CONSOLE_ENABLE: "true"
+      LOG_CONSOLE_LEVEL: INFO
+    depends_on:
+      - standalone
+      - minio
+      - mongodb
+    healthcheck:
+      # python:3.12-slim 无 curl, 用 urllib 探活
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  web:
+    build:
+      context: ./web
+    container_name: shop-assistant-web
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend

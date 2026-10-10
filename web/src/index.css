@@ -1,0 +1,43 @@
+:root {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  line-height: 1.6;
+}
+
+body {
+  margin: 0;
+  background: #f6f7f9;
+  color: #1f2328;
+}
+
+main {
+  max-width: 720px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+section {
+  background: #fff;
+  border: 1px solid #e3e6ea;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+button {
+  margin-right: 12px;
+}
+
+pre {
+  background: #f0f1f3;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.error {
+  color: #d64545;
+}

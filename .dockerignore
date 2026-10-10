@@ -1,0 +1,28 @@
+# VCS / IDE
+.git
+.github
+.idea
+.vscode
+.claude
+
+# Python
+.venv
+**/__pycache__
+*.pyc
+.pytest_cache
+reports
+
+# 前端 (后端镜像不需要; web 有独立 context 和 .dockerignore)
+web
+
+# 数据 / 运行时产物 / 密钥
+.env
+.env.sample
+asset
+model
+output
+logs
+tmp
+docs
+test
+docker/volumes

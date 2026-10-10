@@ -97,6 +97,14 @@ def get_task_result(task_id: str, key: str, default: str = "") -> str:
     return _tasks_result.get(task_id, {}).get(key, default)
 
 
+def get_task_results(task_id: str) -> Dict[str, str]:
+    """读取任务的全部结果字段的副本, 不存在时返回空字典(无副作用)。
+
+    返回副本而不是内部 dict: 调用方 (API 拼装响应) 顺手修改时不会污染全局状态。
+    """
+    return dict(_tasks_result.get(task_id, {}))
+
+
 def get_task_status(task_id: str) -> str:
     """读取任务状态, 任务不存在或未设置时返回空字符串。"""
     return _tasks_status.get(task_id, "")
